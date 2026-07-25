@@ -69,7 +69,7 @@ export const OverviewView: React.FC<OverviewViewProps> = ({
   };
 
   return (
-    <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto pb-28 lg:pb-8">
       {/* Top Header & Quick Action Banner */}
       <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 bg-gradient-to-r from-zinc-900 via-[#131924] to-zinc-900 border border-zinc-800/80 rounded-xl p-5 shadow-xl">
         <div className="flex items-center gap-3.5">

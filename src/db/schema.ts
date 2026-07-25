@@ -1,5 +1,13 @@
 import { pgTable, serial, text, timestamp, varchar, boolean } from "drizzle-orm/pg-core";
 
+// Users table for Firebase Auth integration
+export const users = pgTable("users", {
+  id: serial("id").primaryKey(),
+  uid: text("uid").notNull().unique(), // Firebase Auth UID
+  email: text("email").notNull(),
+  createdAt: timestamp("created_at").defaultNow(),
+});
+
 // === Advanced Upgrade 3: Single-Container Postgres Schema for Ingestion Server ===
 export const agents = pgTable("agents", {
   id: serial("id").primaryKey(),

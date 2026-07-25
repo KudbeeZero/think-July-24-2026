@@ -33,7 +33,7 @@ export function MailView() {
   ];
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-6 space-y-6 max-w-7xl mx-auto pb-28 lg:pb-8">
       <div className="pb-4 border-b border-zinc-800">
         <h2 className="text-lg font-semibold text-zinc-100 flex items-center gap-2">
           <Mail className="w-5 h-5 text-yellow-500" /> Inter-Agent Mail & Dispatch Feed

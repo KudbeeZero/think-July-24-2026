@@ -30,6 +30,7 @@ import {
   Terminal as TerminalIcon,
   Filter,
   Sparkles,
+  Cpu,
 } from 'lucide-react';
 import { INITIAL_BEADS, INITIAL_AGENTS, INITIAL_CONVOYS } from './data';
 import { Bead, Agent, Convoy, Status, Priority } from './types';
@@ -42,11 +43,13 @@ import { MailView } from './components/MailView';
 import { SettingsView } from './components/SettingsView';
 import { AgentsView } from './components/AgentsView';
 import { NewRigModal } from './components/NewRigModal';
-import { GrokTerminal } from './components/GrokTerminal';
+import { KudbeeTerminal } from './components/KudbeeTerminal';
 import { ThinkTokenMeter } from './components/ThinkTokenMeter';
 import { SpinUpAgentModal } from './components/SpinUpAgentModal';
 import { OverviewView } from './components/OverviewView';
 import { BeadsView } from './components/BeadsView';
+import { McpView } from './components/McpView';
+import { SystemTrackerView } from './components/SystemTrackerView';
 
 export default function App() {
   const [beads, setBeads] = useState<Bead[]>(INITIAL_BEADS);
@@ -410,13 +413,41 @@ We are **completely deprecating** the use of the \`REDIS_RATE_LIMIT_URL\` enviro
 
           <button
             onClick={() => {
+              setActiveNav('mcp');
+              setIsSidebarOpen(false);
+            }}
+            className={`flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors text-left ${
+              activeNav === 'mcp'
+                ? 'text-zinc-100 bg-zinc-800/80 font-medium'
+                : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40'
+            }`}
+          >
+            <Cpu className="w-4 h-4 text-purple-400" /> MCP & Heroku Check
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveNav('tracker');
+              setIsSidebarOpen(false);
+            }}
+            className={`flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors text-left ${
+              activeNav === 'tracker'
+                ? 'text-zinc-100 bg-zinc-800/80 font-medium'
+                : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40'
+            }`}
+          >
+            <CheckCircle2 className="w-4 h-4 text-[#e5ff55]" /> System Tracker (10 items)
+          </button>
+
+          <button
+            onClick={() => {
               setIsGrokTerminalOpen(!isGrokTerminalOpen);
               setIsSidebarOpen(false);
             }}
             className="flex items-center justify-between px-3 py-2 text-sm rounded-md transition-colors text-left text-yellow-400/90 hover:bg-yellow-500/10 hover:text-yellow-400 font-medium border border-yellow-500/20 my-1"
           >
             <span className="flex items-center gap-3">
-              <Sparkles className="w-4 h-4 text-yellow-400 animate-pulse" /> Grok AI Terminal
+              <Sparkles className="w-4 h-4 text-yellow-400 animate-pulse" /> Kudbee AI Terminal
             </span>
             <span className="text-[9px] uppercase font-mono px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-400">
               Slide-Up
@@ -541,10 +572,10 @@ We are **completely deprecating** the use of the \`REDIS_RATE_LIMIT_URL\` enviro
                   ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50 shadow-[0_0_12px_rgba(234,179,8,0.2)]'
                   : 'bg-zinc-800/80 text-zinc-300 border-zinc-700/80 hover:bg-zinc-700/80 hover:text-yellow-400'
               }`}
-              title="Toggle Grok AI Terminal"
+              title="Toggle Kudbee AI Terminal"
             >
               <Sparkles className="w-4 h-4 text-yellow-400 animate-pulse" />
-              <span className="hidden sm:inline">Grok Terminal</span>
+              <span className="hidden sm:inline">Kudbee AI</span>
             </button>
 
             <button
@@ -566,24 +597,32 @@ We are **completely deprecating** the use of the \`REDIS_RATE_LIMIT_URL\` enviro
         </header>
 
         {/* View Switcher Output */}
-        {activeNav === 'observability' ? (
-          <div className="flex-1 overflow-y-auto pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-0">
+        {activeNav === 'tracker' ? (
+          <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <SystemTrackerView />
+          </div>
+        ) : activeNav === 'observability' ? (
+          <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
             <ObservabilityView liveFeed={liveFeed} />
           </div>
+        ) : activeNav === 'mcp' ? (
+          <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <McpView />
+          </div>
         ) : activeNav === 'merge_queue' ? (
-          <div className="flex-1 overflow-y-auto pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-0">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
             <MergeQueueView />
           </div>
         ) : activeNav === 'mail' ? (
-          <div className="flex-1 overflow-y-auto pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-0">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
             <MailView />
           </div>
         ) : activeNav === 'settings' ? (
-          <div className="flex-1 overflow-y-auto pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-0">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
             <SettingsView />
           </div>
         ) : activeNav === 'agents' ? (
-          <div className="flex-1 overflow-y-auto pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-0">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
             <AgentsView
               agents={agents}
               onSelectAgent={(agent) => setSelectedAgent(agent)}
@@ -591,7 +630,7 @@ We are **completely deprecating** the use of the \`REDIS_RATE_LIMIT_URL\` enviro
             />
           </div>
         ) : activeNav === 'beads' ? (
-          <div className="flex-1 overflow-y-auto pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-0">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
             <BeadsView
               beads={beads}
               onSelectBead={(bead) => setSelectedBead(bead)}
@@ -600,7 +639,7 @@ We are **completely deprecating** the use of the \`REDIS_RATE_LIMIT_URL\` enviro
             />
           </div>
         ) : (
-          <div className="flex-1 overflow-y-auto pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-0">
+          <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
             <OverviewView
               agents={agents}
               convoys={convoys}
@@ -776,16 +815,17 @@ We are **completely deprecating** the use of the \`REDIS_RATE_LIMIT_URL\` enviro
           <span className="absolute top-1 right-2 w-2 h-2 bg-yellow-500 rounded-full animate-pulse" />
         </button>
         <button 
-          onClick={() => setIsSidebarOpen(true)} 
-          className="flex flex-col items-center justify-center w-16 h-full gap-1.5 text-zinc-500 hover:text-zinc-400 transition-colors"
+          onClick={() => { setActiveNav('tracker'); setIsSidebarOpen(false); }} 
+          className={`flex flex-col items-center justify-center w-16 h-full gap-1.5 transition-colors relative ${activeNav === 'tracker' ? 'text-[#e5ff55]' : 'text-zinc-500 hover:text-zinc-400'}`}
         >
-          <Menu className="w-5 h-5" />
-          <span className="text-[9px] font-medium tracking-wide">More</span>
+          <CheckCircle2 className="w-5 h-5" />
+          <span className="text-[9px] font-medium tracking-wide">Tracker</span>
+          <span className="absolute top-1 right-2 w-2 h-2 bg-[#e5ff55] rounded-full" />
         </button>
       </div>
 
-      {/* Grok AI Slide-Up Terminal Drawer */}
-      <GrokTerminal
+      {/* Kudbee AI Slide-Up Terminal Drawer */}
+      <KudbeeTerminal
         isOpen={isGrokTerminalOpen}
         onClose={() => setIsGrokTerminalOpen(false)}
         onAddBead={handleAddBead}

@@ -21,9 +21,9 @@ import {
 } from 'lucide-react';
 import { Bead } from '../types';
 
-interface GrokMessage {
+interface KudbeeMessage {
   id: string;
-  sender: 'user' | 'grok' | 'system';
+  sender: 'user' | 'kudbee' | 'system';
   text: string;
   timestamp: string;
   model?: string;
@@ -33,19 +33,19 @@ interface GrokMessage {
   rawResponse?: any;
 }
 
-interface GrokTerminalProps {
+interface KudbeeTerminalProps {
   isOpen: boolean;
   onClose: () => void;
   onAddBead?: (bead: Omit<Bead, 'id' | 'createdAt'>) => void;
 }
 
-export const GrokTerminal: React.FC<GrokTerminalProps> = ({
+export const KudbeeTerminal: React.FC<KudbeeTerminalProps> = ({
   isOpen,
   onClose,
   onAddBead,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [selectedModel, setSelectedModel] = useState('grok-3-fast');
+  const [selectedModel, setSelectedModel] = useState('kudbee-3-fast');
   const [proxyUrl, setProxyUrl] = useState('http://127.0.0.1:8080');
   const [showSettings, setShowSettings] = useState(false);
   const [showRawJson, setShowRawJson] = useState<string | null>(null);
@@ -56,11 +56,11 @@ export const GrokTerminal: React.FC<GrokTerminalProps> = ({
   const [extraDataState, setExtraDataState] = useState<any>(null);
 
   const [activeEngine, setActiveEngine] = useState<string>('Auto (Resilient)');
-  const [messages, setMessages] = useState<GrokMessage[]>([
+  const [messages, setMessages] = useState<KudbeeMessage[]>([
     {
       id: 'init-1',
       sender: 'system',
-      text: '🚀 Grok Terminal Ready (No API Key Required)! Server-side intelligence is fully active. Send any message below to start chatting with Grok instantly.',
+      text: '🚀 Kudbee AI Terminal Ready (No API Key Required)! Server-side intelligence is fully active. Send any message below to start chatting with Kudbee AI instantly.',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ]);
@@ -77,18 +77,18 @@ export const GrokTerminal: React.FC<GrokTerminalProps> = ({
     }
   }, [messages, isOpen]);
 
-  const generateInMemoryGrokResponse = (prompt: string, model: string): string => {
+  const generateInMemoryKudbeeResponse = (prompt: string, model: string): string => {
     const lower = prompt.toLowerCase();
     if (lower.includes('hello') || lower.includes('hi ') || lower.includes('test')) {
-      return `Hello! Grok 3 (${model}) Autonomous Engine active.\n\nAll system layers are healthy. I am ready to process queries, generate code, or assist with monorepo telemetry and convoy tasks!`;
+      return `Hello! Kudbee AI 3 (${model}) Autonomous Engine active.\n\nAll system layers are healthy. I am ready to process queries, generate code, or assist with monorepo telemetry and convoy tasks!`;
     }
     if (lower.includes('telemetry') || lower.includes('audit') || lower.includes('monorepo')) {
-      return `⚡ **Monorepo Telemetry & Architecture Audit**\n\n1. **Redis Worker Rate Limits**: Polling backoff active (Upstash 500k cap protected).\n2. **Grok API Multi-Tier Fallback**: Connected across Direct xAI, Groq, Inception 10M Provider, and Gemini.\n3. **Front-End Hydration**: Root Suspense and Error Boundary verified clean.\n4. **Kudbee Convoys**: 16 Beads active, documentation auto-synced.`;
+      return `⚡ **Monorepo Telemetry & Architecture Audit**\n\n1. **Redis Worker Rate Limits**: Polling backoff active (Upstash 500k cap protected).\n2. **Kudbee API Multi-Tier Fallback**: Connected across Direct xAI, Groq, Inception 10M Provider, and Gemini.\n3. **Front-End Hydration**: Root Suspense and Error Boundary verified clean.\n4. **Kudbee Convoys**: 16 Beads active, documentation auto-synced.`;
     }
     if (lower.includes('redis') || lower.includes('worker') || lower.includes('status')) {
       return `🔧 **Worker Status Command**\n\`\`\`bash\n# Check Redis worker loop and Heroku logs\nheroku logs --tail -a app[monitor-worker.1]\n# Check rate limit window\ncurl -s http://localhost:3000/api/telemetry/poll\n\`\`\``;
     }
-    return `Grok 3 (${model}) Autonomous Response:\n\nRegarding "${prompt}":\n\nI've analyzed your query against the monorepo context. All operations are running smoothly across our multi-provider network (Inception / Groq / Gemini / In-Memory). How else can I assist with your development task today?`;
+    return `Kudbee AI 3 (${model}) Autonomous Response:\n\nRegarding "${prompt}":\n\nI've analyzed your query against the monorepo context. All operations are running smoothly across our multi-provider network (Inception / Groq / Gemini / In-Memory). How else can I assist with your development task today?`;
   };
 
   const handleSend = async (customPrompt?: string) => {
@@ -96,17 +96,17 @@ export const GrokTerminal: React.FC<GrokTerminalProps> = ({
     if (!promptToSend.trim() || isLoading) return;
 
     const userMsgId = `user-${Date.now()}`;
-    const userMsg: GrokMessage = {
+    const userMsg: KudbeeMessage = {
       id: userMsgId,
       sender: 'user',
       text: promptToSend,
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     };
 
-    const grokMsgId = `grok-${Date.now()}`;
-    const placeholderMsg: GrokMessage = {
-      id: grokMsgId,
-      sender: 'grok',
+    const botMsgId = `kudbee-${Date.now()}`;
+    const placeholderMsg: KudbeeMessage = {
+      id: botMsgId,
+      sender: 'kudbee',
       text: '',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       model: selectedModel,
@@ -118,18 +118,42 @@ export const GrokTerminal: React.FC<GrokTerminalProps> = ({
     setIsLoading(true);
 
     try {
-      const response = await fetch('/api/grok/ask', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          proxy: proxyUrl || 'http://127.0.0.1:8080',
-          message: promptToSend,
-          model: selectedModel,
-          extra_data: extraDataState,
-        }),
-      });
+      let data: any = {};
+      const trimmedPrompt = promptToSend.trim();
 
-      const data = await response.json();
+      if (trimmedPrompt.startsWith('heroku ai:') || trimmedPrompt.startsWith('ai:') || trimmedPrompt.startsWith('/heroku')) {
+        const cmdParts = trimmedPrompt.replace(/^\/heroku\s+/, '').split(' ');
+        const command = cmdParts[0].startsWith('ai:') ? cmdParts[0] : 'ai:chat';
+        const promptText = cmdParts.slice(1).join(' ') || promptToSend;
+
+        const herokuRes = await fetch('/api/heroku/ai', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            command,
+            prompt: promptText,
+            app: 'kudbee-prod-app'
+          }),
+        });
+        const herokuData = await herokuRes.json();
+        data = {
+          status: 'success',
+          response: `🟣 **Heroku CLI AI Plugin (\`heroku-cli-plugin-ai\`)**\n\n${herokuData.response}`,
+          mode: 'heroku_ai_plugin'
+        };
+      } else {
+        const response = await fetch('/api/grok/ask', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            proxy: proxyUrl || 'http://127.0.0.1:8080',
+            message: promptToSend,
+            model: selectedModel,
+            extra_data: extraDataState,
+          }),
+        });
+        data = await response.json();
+      }
 
       if (data.status === 'success' || data.response) {
         if (data.extra_data) {
@@ -143,13 +167,14 @@ export const GrokTerminal: React.FC<GrokTerminalProps> = ({
           inception_fallback: 'Inception 10M Provider API',
           gemini_fallback: 'Gemini Engine',
           diagnostic_simulation: 'Autonomous Engine',
+          heroku_ai_plugin: 'Heroku CLI AI Plugin',
         };
         const resolvedEngine = modeMap[data.mode] || 'Active Engine';
         setActiveEngine(resolvedEngine);
 
         setMessages((prev) =>
           prev.map((msg) =>
-            msg.id === grokMsgId
+            msg.id === botMsgId
               ? {
                   ...msg,
                   text: data.response || 'No response text returned.',
@@ -163,11 +188,11 @@ export const GrokTerminal: React.FC<GrokTerminalProps> = ({
           )
         );
       } else {
-        const fallbackText = generateInMemoryGrokResponse(promptToSend, selectedModel);
+        const fallbackText = generateInMemoryKudbeeResponse(promptToSend, selectedModel);
         setActiveEngine('Inception / In-Memory Fallback');
         setMessages((prev) =>
           prev.map((msg) =>
-            msg.id === grokMsgId
+            msg.id === botMsgId
               ? {
                   ...msg,
                   text: `${fallbackText}\n\n---\n*⚡ Powered by Multi-Provider In-Memory Fallback Engine*`,
@@ -179,11 +204,11 @@ export const GrokTerminal: React.FC<GrokTerminalProps> = ({
         );
       }
     } catch {
-      const fallbackText = generateInMemoryGrokResponse(promptToSend, selectedModel);
+      const fallbackText = generateInMemoryKudbeeResponse(promptToSend, selectedModel);
       setActiveEngine('Inception / In-Memory Fallback');
       setMessages((prev) =>
         prev.map((msg) =>
-          msg.id === grokMsgId
+          msg.id === botMsgId
             ? {
                 ...msg,
                 text: `${fallbackText}\n\n---\n*⚡ Powered by Multi-Provider In-Memory Fallback Engine*`,
@@ -412,13 +437,34 @@ export const GrokTerminal: React.FC<GrokTerminalProps> = ({
 
       {/* Quick Prompts Bar */}
       <div className="px-3 py-1.5 bg-[#0b0f16] border-t border-zinc-800/80 flex items-center gap-2 overflow-x-auto shrink-0 no-scrollbar">
-        <span className="text-[10px] text-zinc-500 font-bold uppercase shrink-0">QUICK TEST:</span>
+        <span className="text-[10px] text-zinc-500 font-bold uppercase shrink-0">QUICK COMMANDS:</span>
         <button
-          onClick={() => handleSend('Hello Grok! Test connection to the API wrapper.')}
+          onClick={() => handleSend('/status')}
+          disabled={isLoading}
+          className="px-2 py-0.5 bg-yellow-500/10 hover:bg-yellow-500/20 border border-yellow-500/40 rounded text-[10px] text-yellow-400 font-bold whitespace-nowrap transition-colors"
+        >
+          ⚡ /status
+        </button>
+        <button
+          onClick={() => handleSend('/db')}
+          disabled={isLoading}
+          className="px-2 py-0.5 bg-blue-500/10 hover:bg-blue-500/20 border border-blue-500/40 rounded text-[10px] text-blue-400 font-bold whitespace-nowrap transition-colors"
+        >
+          🗄️ /db Cloud SQL
+        </button>
+        <button
+          onClick={() => handleSend('/agents')}
+          disabled={isLoading}
+          className="px-2 py-0.5 bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/40 rounded text-[10px] text-emerald-400 font-bold whitespace-nowrap transition-colors"
+        >
+          🤖 /agents Fleet
+        </button>
+        <button
+          onClick={() => handleSend('/run Toast Fix ingestion rate limiter and test Redis backoff')}
           disabled={isLoading}
           className="px-2 py-0.5 bg-zinc-800/80 hover:bg-zinc-700/80 border border-zinc-700/60 rounded text-[10px] text-zinc-300 whitespace-nowrap transition-colors"
         >
-          👋 Hello Test
+          ▶ /run Toast
         </button>
         <button
           onClick={() => handleSend('Analyze the current monorepo telemetry architecture and suggest improvements.')}
@@ -428,11 +474,11 @@ export const GrokTerminal: React.FC<GrokTerminalProps> = ({
           ⚡ Monorepo Audit
         </button>
         <button
-          onClick={() => handleSend('Provide a quick bash command to check redis worker loop statuses.')}
+          onClick={() => handleSend('heroku ai:explain Analyze Heroku deploy health and memory status')}
           disabled={isLoading}
-          className="px-2 py-0.5 bg-zinc-800/80 hover:bg-zinc-700/80 border border-zinc-700/60 rounded text-[10px] text-zinc-300 whitespace-nowrap transition-colors"
+          className="px-2 py-0.5 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/40 rounded text-[10px] text-purple-400 font-bold whitespace-nowrap transition-colors"
         >
-          🔧 Worker Status Command
+          🟣 heroku ai:explain
         </button>
       </div>
 

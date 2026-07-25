@@ -32,7 +32,7 @@ export function ObservabilityView({ liveFeed = [] }: { liveFeed?: Array<{msg: st
     : defaultTelemetryEvents;
 
   return (
-    <div className="p-6 space-y-6 max-w-7xl mx-auto">
+    <div className="p-6 space-y-6 max-w-7xl mx-auto pb-28 lg:pb-8">
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-800">
         <div>
