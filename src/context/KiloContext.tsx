@@ -1,0 +1,457 @@
+import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
+import { useLocalStorage } from '../hooks/useLocalStorage';
+import { Bead, Agent, Convoy, MailItem, TelemetryLog, Status, Priority } from '../types';
+import { INITIAL_BEADS, INITIAL_AGENTS, INITIAL_CONVOYS, INITIAL_MAIL_ITEMS } from '../data';
+
+interface KiloContextType {
+  beads: Bead[];
+  setBeads: React.Dispatch<React.SetStateAction<Bead[]>>;
+  agents: Agent[];
+  setAgents: React.Dispatch<React.SetStateAction<Agent[]>>;
+  convoys: Convoy[];
+  setConvoys: React.Dispatch<React.SetStateAction<Convoy[]>>;
+  mailItems: MailItem[];
+  setMailItems: (val: MailItem[] | ((val: MailItem[]) => MailItem[])) => void;
+  toasts: Array<{ id: string; title: string; desc: string; severity?: 'info' | 'warning' | 'critical' | 'escalation' }>;
+  setToasts: (val: any) => void;
+  totalReasoningTokens: number;
+  setTotalReasoningTokens: (val: number | ((val: number) => number)) => void;
+  budgetLimit: number;
+  setBudgetLimit: (val: number | ((val: number) => number)) => void;
+  activeModel: string;
+  setActiveModel: (val: string | ((val: string) => string)) => void;
+  activeNav: string;
+  setActiveNav: (val: string | ((val: string) => string)) => void;
+  searchQuery: string;
+  setSearchQuery: (val: string) => void;
+  priorityFilter: string;
+  setPriorityFilter: (val: string) => void;
+  isSidebarOpen: boolean;
+  setIsSidebarOpen: (val: boolean | ((val: boolean) => boolean)) => void;
+  showTerminalMobile: boolean;
+  setShowTerminalMobile: (val: boolean) => void;
+  isGrokTerminalOpen: boolean;
+  setIsGrokTerminalOpen: (val: boolean | ((val: boolean) => boolean)) => void;
+  isNewBeadOpen: boolean;
+  setIsNewBeadOpen: (val: boolean) => void;
+  isNewRigOpen: boolean;
+  setIsNewRigOpen: (val: boolean) => void;
+  selectedBead: Bead | null;
+  setSelectedBead: (val: Bead | null) => void;
+  selectedAgent: Agent | null;
+  setSelectedAgent: (val: Agent | null) => void;
+  isSpinUpModalOpen: boolean;
+  setIsSpinUpModalOpen: (val: boolean) => void;
+  promptCopied: boolean;
+  setPromptCopied: (val: boolean) => void;
+  liveFeed: TelemetryLog[];
+  setLiveFeed: React.Dispatch<React.SetStateAction<TelemetryLog[]>>;
+  KILO_PROMPT_TEXT: string;
+  
+  // Handlers
+  handleAddBead: (newBeadData: Omit<Bead, 'id' | 'createdAt'>) => Promise<void>;
+  handleUpdateBeadStatus: (beadId: string, newStatus: Status) => void;
+  handleUpdateBeadAssignee: (beadId: string, assignee: string) => void;
+  handleDeleteBead: (beadId: string) => void;
+  handleToggleAgentStatus: (agentId: string) => void;
+  handleAddConvoy: (newConvoy: Convoy) => void;
+  handleAgentCreated: (newAgent: Agent) => void;
+  handleRunTestTask: (agentName: string, prompt: string, model: string) => Promise<any>;
+  handleMarkMailAsRead: (id: string) => void;
+  handleMarkAllMailAsRead: () => void;
+  simulateIncomingAlert: () => void;
+  handleAddDemoToast: (title: string, desc: string, severity?: 'info' | 'warning' | 'critical' | 'escalation') => void;
+  handleClearToasts: () => void;
+  handleCopyPrompt: () => void;
+}
+
+const KiloContext = createContext<KiloContextType | undefined>(undefined);
+
+export const KiloProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [beads, setBeads] = useState<Bead[]>(INITIAL_BEADS);
+  const [agents, setAgents] = useState<Agent[]>(INITIAL_AGENTS);
+  const [convoys, setConvoys] = useState<Convoy[]>(INITIAL_CONVOYS);
+  const [mailItems, setMailItems] = useLocalStorage<MailItem[]>('mailItems', INITIAL_MAIL_ITEMS as MailItem[]);
+  const [toasts, setToasts] = useLocalStorage<Array<{ id: string; title: string; desc: string; severity?: 'info' | 'warning' | 'critical' | 'escalation' }>>('appToasts', []);
+
+  // Reasoning Tokens State
+  const [totalReasoningTokens, setTotalReasoningTokens] = useLocalStorage<number>('totalReasoningTokens', 180750);
+  const [budgetLimit, setBudgetLimit] = useLocalStorage<number>('budgetLimit', 1000000);
+  const [activeModel, setActiveModel] = useLocalStorage<string>('activeModel', 'deepseek-reasoner');
+  const [isSpinUpModalOpen, setIsSpinUpModalOpen] = useState(false);
+
+  // Nav view state
+  const [activeNav, setActiveNav] = useLocalStorage<string>('activeNav', 'overview');
+
+  // Search & Filter state
+  const [searchQuery, setSearchQuery] = useState('');
+  const [priorityFilter, setPriorityFilter] = useState<string>('all');
+
+  // Modals & Drawers state
+  const [isNewBeadOpen, setIsNewBeadOpen] = useState(false);
+  const [isNewRigOpen, setIsNewRigOpen] = useState(false);
+  const [selectedBead, setSelectedBead] = useState<Bead | null>(null);
+  const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+
+  // Mobile layout state
+  const [isSidebarOpen, setIsSidebarOpen] = useLocalStorage<boolean>('isSidebarOpen', false);
+  const [showTerminalMobile, setShowTerminalMobile] = useState(false);
+  const [isGrokTerminalOpen, setIsGrokTerminalOpen] = useLocalStorage<boolean>('isGrokTerminalOpen', false);
+
+  // Terminal Copy Feedback
+  const [promptCopied, setPromptCopied] = useState(false);
+
+  // Live Telemetry Feed
+  const [liveFeed, setLiveFeed] = useState<TelemetryLog[]>([]);
+  const eventSourceRef = useRef<EventSource | null>(null);
+
+  useEffect(() => {
+    // Advanced Upgrade 4: Fallback HTTP long-polling/SSE for WebSocket telemetry
+    eventSourceRef.current = new EventSource('/api/telemetry/stream');
+    
+    eventSourceRef.current.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        const type = data.source === 'System' ? 'success' : (data.source === 'User' ? 'success' : 'agent');
+        
+        setLiveFeed(prev => {
+          const newEntry: TelemetryLog = {
+            msg: `[${data.source}] ${data.event}`,
+            event: data.event,
+            source: data.source,
+            time: 'just now',
+            type: type as any
+          };
+          return [newEntry, ...prev].slice(0, 50); // Keep last 50 events
+        });
+      } catch (err) {
+        console.error('Failed to parse SSE data:', err);
+      }
+    };
+
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+      }
+    };
+  }, []);
+
+  const handleAddBead = async (newBeadData: Omit<Bead, 'id' | 'createdAt'>) => {
+    const newBead: Bead = {
+      ...newBeadData,
+      id: `b${Date.now()}`,
+      createdAt: 'just now',
+    };
+    setBeads(prev => [newBead, ...prev]);
+
+    // Send task to the backend agent engine
+    try {
+      await fetch('/api/agents/task', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: newBeadData.title, payload: newBeadData })
+      });
+    } catch (e) {
+      console.error('Failed to submit task to agent engine:', e);
+    }
+  };
+
+  const handleUpdateBeadStatus = (beadId: string, newStatus: Status) => {
+    setBeads(prev => prev.map((b) => (b.id === beadId ? { ...b, status: newStatus } : b)));
+    if (selectedBead && selectedBead.id === beadId) {
+      setSelectedBead(prev => prev ? { ...prev, status: newStatus } : null);
+    }
+  };
+
+  const handleUpdateBeadAssignee = (beadId: string, assignee: string) => {
+    setBeads(prev => prev.map((b) => (b.id === beadId ? { ...b, assignee } : b)));
+    if (selectedBead && selectedBead.id === beadId) {
+      setSelectedBead(prev => prev ? { ...prev, assignee } : null);
+    }
+  };
+
+  const handleDeleteBead = (beadId: string) => {
+    setBeads(prev => prev.filter((b) => b.id !== beadId));
+    if (selectedBead && selectedBead.id === beadId) {
+      setSelectedBead(null);
+    }
+  };
+
+  const handleToggleAgentStatus = (agentId: string) => {
+    setAgents(prev =>
+      prev.map((a) =>
+        a.id === agentId
+          ? {
+              ...a,
+              status: a.status === 'working' ? 'idle' : 'working',
+              lastActive: 'just now',
+            }
+          : a
+      )
+    );
+  };
+
+  const handleAddConvoy = (newConvoy: Convoy) => {
+    setConvoys(prev => [newConvoy, ...prev]);
+  };
+
+  const handleAgentCreated = (newAgent: Agent) => {
+    setAgents(prev => [newAgent, ...prev]);
+  };
+
+  const handleRunTestTask = async (agentName: string, prompt: string, model: string) => {
+    try {
+      const res = await fetch('/api/grok/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: prompt,
+          model,
+          extra_data: { agentName }
+        })
+      });
+
+      const data = await res.json();
+      const tokensGenerated = data.usage?.completion_tokens || Math.floor(Math.random() * 800) + 350;
+
+      setTotalReasoningTokens(prev => prev + tokensGenerated);
+
+      setAgents(prev =>
+        prev.map(a =>
+          a.name === agentName
+            ? {
+                ...a,
+                status: 'working',
+                reasoningTokensSpent: (a.reasoningTokensSpent || 0) + tokensGenerated,
+                totalTasksCompleted: (a.totalTasksCompleted || 0) + 1,
+                lastActive: 'less than a minute ago',
+                currentAction: `Completed task: "${prompt.substring(0, 35)}..."`
+              }
+            : a
+        )
+      );
+
+      setLiveFeed(prev => [
+        {
+          msg: `Agent [${agentName}] executed task via ${model} (+${tokensGenerated} reasoning tokens)`,
+          time: 'less than a minute ago',
+          type: 'reasoning'
+        },
+        ...prev
+      ]);
+
+      return data;
+    } catch (err: any) {
+      console.error('Failed to run agent test task:', err);
+      throw err;
+    }
+  };
+
+  const handleMarkMailAsRead = (id: string) => {
+    setMailItems(prev => prev.map(m => m.id === id ? { ...m, unread: false } : m));
+  };
+
+  const handleMarkAllMailAsRead = () => {
+    setMailItems(prev => prev.map(m => ({ ...m, unread: false })));
+  };
+
+  const handleAddDemoToast = (title: string, desc: string, severity: 'info' | 'warning' | 'critical' | 'escalation' = 'info') => {
+    const toastId = 'sim_toast_' + Date.now();
+    setToasts(prev => [...prev, { id: toastId, title, desc, severity }]);
+    
+    // Auto remove from local UI notification tray after 6 seconds
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== toastId));
+    }, 6000);
+  };
+
+  const handleClearToasts = () => {
+    setToasts([]);
+  };
+
+  const KILO_PROMPT_TEXT = `# 🎯 MISSION: System Memory Sync & Autonomous Rate Limiter Refactor
+
+**Context:** 
+We just completed a massive 20-commit hardening sprint, worker loop resilience, memory seeding pipeline, and a black screen hotfix. However, the black screen persists due to a lingering \`shouldFail\` hook, and previous security remediations were blocked by sandbox network constraints. 
+
+Your mission is to audit our recent history, update our memory files, remove reliance on external rate-limit variables, and package everything into a clean Draft PR.
+
+## 🛠️ Phase 1: Context Gathering & Memory Update
+1. **Audit the last 10 PRs** merged into the \`main\` branch. 
+2. **Update the Memory Layer:** Thoroughly update \`AGENTS.md\`, \`OUTING_PLAN.md\`, and any other relevant \".md\" documentation files to reflect the current architectural state. Ensure the "Top 7 Blockers" are updated based on recent completions.
+
+## 🛠️ Phase 2: Autonomous Redis & Rate Limit Deprecation
+We are **completely deprecating** the use of the \`REDIS_RATE_LIMIT_URL\` environment variable.
+1. Strip all dependencies on this specific environment variable across the ingestion server and worker codebases.
+2. **Implement Fallback/Autonomy:** You must either:
+   - Implement a strict in-memory sliding window fallback for rate limiting.
+   - **OR (Preferred):** Utilize your agentic capabilities to autonomously provision a temporary, independent Redis database (72-hour lifecycle) dedicated solely to rate limiting for this worker cluster. Wire the application to use this newly provisioned resource.
+
+## 🛠️ Phase 3: Critical Bug Fixes & Security Remediation
+1. **Fix the Black Screen:** Remove the \`shouldFail\` production hook in \`services/agents/worker.ts\` (around lines 341-345) to stop the forced frontend failure state.
+2. **Apply Pending Security Patches:**
+   - Add \`\"tar\": \"7.5.19\"\` and \`\"postcss\": \"^8.5.18\"\` to the root \`package.json\` overrides.
+   - Upgrade \`react-router-dom\` to \`^8.3.0\` in \`apps/web/package.json\`.
+3. **Regenerate Lockfiles:** Run \`npm install\` to properly fetch from the registry and regenerate valid integrity hashes in \`package-lock.json\`.
+
+## 🚀 Execution Strategy
+- **Create a Draft PR** immediately upon starting.
+- **Commit frequently** after each logical step.
+- Wait for CI checks to pass. If CI fails, sleep and retry or fix the breaking changes.`;
+
+  const handleCopyPrompt = () => {
+    navigator.clipboard.writeText(KILO_PROMPT_TEXT);
+    setPromptCopied(true);
+    setTimeout(() => setPromptCopied(false), 2500);
+  };
+
+  const simulateIncomingAlert = () => {
+    const alertTypes = [
+      {
+        from: 'Shadow',
+        role: 'Polecat Worker',
+        subject: 'ERR max requests limit exceeded on Upstash Redis',
+        preview: 'Redis instance has exceeded its free-tier request cap of 500,000 requests. Implementation of worker backoff fallback is urgent.',
+        severity: 'critical' as const,
+        content: `Operator,
+
+The worker containers are throwing constant \`ERR max requests limit exceeded\` exceptions against our Upstash Redis cluster. 
+
+We have hit our strict 500k monthly cap. This causes SSE heartbeats to fail instantly on production. 
+
+### Recommended Action:
+We MUST roll out the exponential backoff worker polling fix staged in PR #179 to restrict idle requests and transition to local in-memory queue backups.`,
+        diff: `+++ packages/redis-resilience/src/client.ts
+@@ -10,4 +10,12 @@
+     enableOfflineQueue: true,
++    retryStrategy(times) {
++      const delay = Math.min(times * 100, 3000);
++      return delay;
++    }`
+       },
+       {
+         from: 'Clover',
+         role: 'Polecat Worker',
+         subject: 'Memory Pipeline Seeding Verified - cosineSimilarity complete',
+         preview: 'Verified semantic memory recall in MemoryVault. Cosine similarity returning top matches with 98% accuracy.',
+         severity: 'info' as const,
+         content: `Hi team,
+
+I am excited to report that the semantic memory search tests for the \`MemoryVault\` are now **100% green**.
+
+Our vector retrieval implementation safely fallback-handles empty states, and correctly identifies similar agent thoughts under heavy parallel query load. 
+
+We are fully primed to integrate the telemetry search box!`,
+        diff: `+++ packages/kudbee-memory/src/vault.ts
+@@ -21,3 +21,5 @@
+ export function cosineSimilarity(a: number[], b: number[]): number {
+-  return dotProduct(a, b) / (magnitude(a) * magnitude(b));
++  const mag = magnitude(a) * magnitude(b);
++  if (mag === 0) return 0;
++  return dotProduct(a, b) / mag;
+  }`
+       },
+       {
+         from: 'Mayor',
+         role: 'Orchestrator',
+         subject: 'Escalation Alert: Bead b14 [Fix PCA reducer file not found] Stalled',
+         preview: 'Blocker detected! Bead b14 has been open for 4 hours without worker hook. Awaiting assignment.',
+         severity: 'escalation' as const,
+         content: `System Warning,
+
+High priority Bead **b14** has entered a stalled state. No active worker is hooked to this branch.
+
+### Blocker Context:
+- **Error**: \`Module not found: Can't resolve '../reducers/pcaReducer' in '/apps/web/src/store'\`
+- **File**: \`apps/web/src/store/index.ts\` line 24
+
+Assign this bead immediately to prevent the Phase 11 convoy from timing out.`,
+        diff: `--- apps/web/src/store/index.ts
++++ apps/web/src/store/index.ts
+-import { pcaReducer } from '../reducers/pcaReducer';
++import { pcaReducer } from './pcaReducer';`
+       }
+     ];
+
+     const randomAlert = alertTypes[Math.floor(Math.random() * alertTypes.length)];
+     const id = 'sim_' + Date.now();
+     const newMail: MailItem = {
+       id,
+       from: randomAlert.from,
+       role: randomAlert.role,
+       subject: randomAlert.subject,
+       preview: randomAlert.preview,
+       time: 'just now',
+       unread: true,
+       severity: randomAlert.severity,
+       content: randomAlert.content,
+       diff: randomAlert.diff
+     };
+
+     setMailItems(prev => [newMail, ...prev]);
+
+     // Push live feed telemetry
+     setLiveFeed(prev => [
+       {
+         msg: `ALERT [${randomAlert.from}]: ${randomAlert.subject}`,
+         time: 'just now',
+         type: randomAlert.severity === 'critical' || randomAlert.severity === 'escalation' ? 'error' : 'success'
+       },
+       ...prev
+     ]);
+
+     handleAddDemoToast(randomAlert.subject, randomAlert.preview, randomAlert.severity);
+  };
+
+  return (
+    <KiloContext.Provider value={{
+      beads, setBeads,
+      agents, setAgents,
+      convoys, setConvoys,
+      mailItems, setMailItems,
+      toasts, setToasts,
+      totalReasoningTokens, setTotalReasoningTokens,
+      activeNav, setActiveNav,
+      searchQuery, setSearchQuery,
+      priorityFilter, setPriorityFilter,
+      isSidebarOpen, setIsSidebarOpen,
+      showTerminalMobile, setShowTerminalMobile,
+      isGrokTerminalOpen, setIsGrokTerminalOpen,
+      isNewBeadOpen, setIsNewBeadOpen,
+      isNewRigOpen, setIsNewRigOpen,
+      selectedBead, setSelectedBead,
+      selectedAgent, setSelectedAgent,
+      isSpinUpModalOpen, setIsSpinUpModalOpen,
+      promptCopied, setPromptCopied,
+      liveFeed, setLiveFeed,
+      KILO_PROMPT_TEXT,
+      budgetLimit, setBudgetLimit,
+      activeModel, setActiveModel,
+      
+      handleAddBead,
+      handleUpdateBeadStatus,
+      handleUpdateBeadAssignee,
+      handleDeleteBead,
+      handleToggleAgentStatus,
+      handleAddConvoy,
+      handleAgentCreated,
+      handleRunTestTask,
+      handleMarkMailAsRead,
+      handleMarkAllMailAsRead,
+      simulateIncomingAlert,
+      handleAddDemoToast,
+      handleClearToasts,
+      handleCopyPrompt
+    }}>
+      {children}
+    </KiloContext.Provider>
+  );
+};
+
+export const useKilo = () => {
+  const context = useContext(KiloContext);
+  if (context === undefined) {
+    throw new Error('useKilo must be used within a KiloProvider');
+  }
+  return context;
+};

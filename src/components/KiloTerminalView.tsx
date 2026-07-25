@@ -1,31 +1,26 @@
-import React, { useState, useEffect, useRef, useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
+import { useKilo } from '../context/KiloContext';
 import { 
   Brain, 
   Cpu, 
   Zap, 
   Activity, 
-  AlertTriangle, 
   RefreshCw, 
   Flame, 
-  Layers, 
   Play, 
   Sliders, 
-  Power, 
-  Database, 
+  Sparkles,
   CheckCircle2, 
   Clock, 
   XCircle,
-  Sparkles,
-  Laptop,
-  Smartphone,
-  Tablet,
-  Wifi,
-  Bell,
-  Trash2,
-  Settings,
-  Eye,
-  ZapOff
+  ZapOff,
+  Database,
+  Shield
 } from 'lucide-react';
+import { NeuralNetMesh, NeuralNode, NeuralLink } from './kilo/NeuralNetMesh';
+import { DeviceSyncTopology, DeviceSyncNode } from './kilo/DeviceSyncTopology';
+import { ResiliencyControls } from './kilo/ResiliencyControls';
+import { PersistentToastTray } from './kilo/PersistentToastTray';
 
 interface KiloTerminalViewProps {
   totalReasoningTokens: number;
@@ -40,54 +35,22 @@ interface DeepHealthData {
   prunerLock: { locked: boolean; owner?: string; ageSeconds?: number };
   budget: { currentSpend: number; maxLimit: number; exceeds: boolean };
   circuitBreakers: { groqBreaker: string; deepseekBreaker: string };
-}
-
-// Interfaces for our Neural Network and Device Sync Visualizers
-interface NeuralNode {
-  id: string;
-  label: string;
-  layer: 'input' | 'hidden1' | 'hidden2' | 'output';
-  x: number;
-  y: number;
-  radius: number;
-  bias: number;
-  activation: 'ReLU' | 'SwiGLU' | 'Softmax' | 'Sigmoid' | 'GELU';
-  currentVal: number;
-}
-
-interface NeuralLink {
-  id: string;
-  from: string;
-  to: string;
-  weight: number;
-  severed: boolean;
-}
-
-interface Particle {
-  id: string;
-  fromNode: NeuralNode;
-  toNode: NeuralNode;
-  progress: number; // 0 to 1
-  speed: number;
-  color: string;
-}
-
-interface DeviceSyncNode {
-  id: string;
-  type: 'laptop' | 'phone' | 'tablet';
-  name: string;
-  ping: number;
-  status: 'online' | 'synced' | 'syncing' | 'offline';
-  angle: number; // radians for circular layout
+  challengeMode?: boolean;
+  activeDisruptors?: string[];
+  fallout?: {
+    score: number;
+    throughputDrop: number;
+    memorySaturation: number;
+    decayState: 'nominal' | 'warning' | 'critical';
+    syntheticLatencyMs: number;
+  };
 }
 
 export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
   totalReasoningTokens,
   setTotalReasoningTokens
 }) => {
-  // Budget Limit State (defaults to 1,000,000 max)
-  const [budgetLimit, setBudgetLimit] = useState<number>(1000000);
-  const [activeModel, setActiveModel] = useState<string>('deepseek-reasoner');
+  const { budgetLimit, setBudgetLimit, activeModel, setActiveModel } = useKilo();
   
   // Prompt Submission State
   const [prompt, setPrompt] = useState('');
@@ -96,6 +59,7 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
   const [isLoading, setIsLoading] = useState(false);
   const [grokMode, setGrokMode] = useState<string>('');
   const [tokensEarned, setTokensEarned] = useState<number | null>(null);
+  const [pulseTrigger, setPulseTrigger] = useState(0);
 
   // Rate Limiting Simulator State
   const [telemetryCount, setTelemetryCount] = useState<number>(0);
@@ -108,17 +72,16 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
   const [isPolling, setIsPolling] = useState(false);
   const [isTripping, setIsTripping] = useState(false);
 
-  // Queue simulation
+  // Dispatch Logs list
   const [dispatchLogs, setDispatchLogs] = useState<Array<{ id: string; time: string; msg: string; type: 'info' | 'warn' | 'success' | 'err' }>>([
     { id: '1', time: '10:42:15', msg: '[System] Resilient worker polling loops initialized successfully.', type: 'success' },
     { id: '2', time: '10:42:18', msg: '[Worker] Dynamic Redis URL sanitization active: REDIS_RATE_LIMIT_URL connected.', type: 'info' },
     { id: '3', time: '10:45:02', msg: '[Scheduler] Daily maintenance cron job spawned successfully.', type: 'success' }
   ]);
 
-  // Persistent Toasts/Notification Center state read from LocalStorage
+  // Persistent Toasts from LocalStorage
   const [persistedToasts, setPersistedToasts] = useState<Array<{ id: string; title: string; desc: string; severity?: 'info' | 'warning' | 'critical' | 'escalation' }>>([]);
 
-  // Load and subscribe to persistent toasts
   const loadPersistedToasts = () => {
     try {
       const stored = localStorage.getItem('appToasts');
@@ -128,13 +91,12 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
         setPersistedToasts([]);
       }
     } catch (e) {
-      console.error('Failed to load toasts from localstorage', e);
+      console.error('Failed to load toasts', e);
     }
   };
 
   useEffect(() => {
     loadPersistedToasts();
-    // Poll localstorage periodically for updates (so toast additions anywhere trigger sync)
     const interval = setInterval(loadPersistedToasts, 2000);
     return () => clearInterval(interval);
   }, []);
@@ -145,7 +107,7 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
       setPersistedToasts([]);
       addLog('[System] Toast persistence cache cleared successfully.', 'success');
     } catch (e) {
-      console.error('Failed to clear persistent toasts', e);
+      console.error('Failed to clear toasts', e);
     }
   };
 
@@ -154,7 +116,7 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
       const stored = localStorage.getItem('appToasts');
       const current = stored ? JSON.parse(stored) : [];
       const newToast = { id: `demo-${Date.now()}`, title, desc, severity };
-      const updated = [newToast, ...current].slice(0, 30); // Keep last 30
+      const updated = [newToast, ...current].slice(0, 30);
       localStorage.setItem('appToasts', JSON.stringify(updated));
       setPersistedToasts(updated);
       addLog(`[Toast Center] Generated persistent ${severity} event: "${title}"`, 'success');
@@ -163,17 +125,18 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
     }
   };
 
-  // INTERACTIVE NEURAL NET VISUALIZER STATE & ANIMATION ENGINE
-  const canvasRef = useRef<HTMLCanvasElement | null>(null);
-  
-  // Custom interactive parameters (User adjustability)
-  const [tempBias, setTempBias] = useState<number>(0.35); // Adjusts node sizes & pulse speed
-  const [safetyThreshold, setSafetyThreshold] = useState<number>(0.85); // Adjusts link color tints
-  const [reasoningDepth, setReasoningDepth] = useState<number>(4); // Slider to change hidden node layers
-  const [simulationSpeed, setSimulationSpeed] = useState<number>(1); // Particle animation speed
-  const [symmetryMode, setSymmetryMode] = useState<boolean>(true); // Left/Right Brain split alignment
-  const [topologyType, setTopologyType] = useState<'feedforward' | 'glowing-grid' | 'circular-mesh'>('feedforward');
+  // State parameter configs for Neural Mesh visualizer
+  const [tempBias, setTempBias] = useState<number>(0.35);
+  const [safetyThreshold, setSafetyThreshold] = useState<number>(0.85);
+  const [reasoningDepth, setReasoningDepth] = useState<number>(4);
+  const [simulationSpeed, setSimulationSpeed] = useState<number>(1);
+  const [symmetryMode, setSymmetryMode] = useState<boolean>(true);
+  const [topologyType, setTopologyType] = useState<'feedforward' | 'glowing-grid' | 'circular-mesh' | 'brainca-matrix'>('brainca-matrix');
   const [activeThemeProfile, setActiveThemeProfile] = useState<'neon-yellow' | 'spectral-fire' | 'cool-cyber'>('neon-yellow');
+
+  // Challenge Token Handshake states (Roadmap Stage 5)
+  const [isMiningChallenge, setIsMiningChallenge] = useState<boolean>(false);
+  const [challengeStatus, setChallengeStatus] = useState<string>('');
 
   // Interactive Node inspector selection
   const [inspectedNode, setInspectedNode] = useState<NeuralNode | null>(null);
@@ -181,9 +144,8 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
   // Initialize nodes and links
   const [nodes, setNodes] = useState<NeuralNode[]>([]);
   const [links, setLinks] = useState<NeuralLink[]>([]);
-  const particlesRef = useRef<Particle[]>([]);
 
-  // Local Sync Devices (Image 3)
+  // Sync devices
   const [devices, setDevices] = useState<DeviceSyncNode[]>([
     { id: 'd1', type: 'laptop', name: 'Dev Laptop (CLI)', ping: 12, status: 'synced', angle: 0 },
     { id: 'd2', type: 'phone', name: 'Ops Mobile Monitor', ping: 48, status: 'synced', angle: Math.PI / 3 },
@@ -193,404 +155,327 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
     { id: 'd6', type: 'tablet', name: 'Database Dashboard', ping: 18, status: 'synced', angle: (5 * Math.PI) / 3 },
   ]);
 
-  // Construct topology based on selections
+  // Construct topology nodes
   useEffect(() => {
     const newNodes: NeuralNode[] = [];
     const newLinks: NeuralLink[] = [];
 
-    // Construct Input Layer
-    const inputCount = 3;
-    const inputLabels = ['Prompt Embeddings', 'Safety Guidelines', 'Device Context'];
-    const inputActivations: Array<'ReLU' | 'SwiGLU' | 'Softmax' | 'Sigmoid' | 'GELU'>[] = [['ReLU', 'SwiGLU', 'GELU']];
-    for (let i = 0; i < inputCount; i++) {
+    if (topologyType === 'brainca-matrix') {
+      // Construct BraiNCA 7-Node Matrix (Research)
+      const caNodes: { id: string; label: string; layer: 'input' | 'hidden1' | 'hidden2' | 'output'; x: number; y: number; radius: number; bias: number; activation: 'ReLU' | 'SwiGLU' | 'Softmax' | 'Sigmoid' | 'GELU' }[] = [
+        { id: 'bca-ingress', label: '1. INGRESS (Boundary Check)', layer: 'input', x: 80, y: 165, radius: 15, bias: 0.12, activation: 'ReLU' },
+        { id: 'bca-hermes', label: '2. HERMES (Workload Broker)', layer: 'hidden1', x: 170, y: 80, radius: 13, bias: 0.28, activation: 'SwiGLU' },
+        { id: 'bca-gateway', label: '3. GATEWAY (Control Core)', layer: 'hidden1', x: 260, y: 240, radius: 14, bias: 0.35, activation: 'SwiGLU' },
+        { id: 'bca-sentinel', label: '4. SENTINEL (Guardrail)', layer: 'hidden2', x: 350, y: 80, radius: 13, bias: -0.15, activation: 'GELU' },
+        { id: 'bca-crucible', label: '5. CRUCIBLE (Synaptic Logic)', layer: 'hidden2', x: 440, y: 240, radius: 14, bias: 0.42, activation: 'GELU' },
+        { id: 'bca-redis', label: '6. REDIS (Volatile Queue)', layer: 'output', x: 530, y: 80, radius: 15, bias: 0.52, activation: 'Softmax' },
+        { id: 'bca-llm', label: '7. LLM ROUTER (Inference Target)', layer: 'output', x: 590, y: 165, radius: 16, bias: 0.85, activation: 'Softmax' },
+      ];
+
+      caNodes.forEach(node => {
+        newNodes.push({
+          ...node,
+          currentVal: 0.4
+        });
+      });
+
+      // Sequential connections
+      const sequentialConnections = [
+        { from: 'bca-ingress', to: 'bca-hermes', weight: 1.2 },
+        { from: 'bca-hermes', to: 'bca-gateway', weight: 0.95 },
+        { from: 'bca-gateway', to: 'bca-sentinel', weight: 1.5 },
+        { from: 'bca-sentinel', to: 'bca-crucible', weight: 1.1 },
+        { from: 'bca-crucible', to: 'bca-redis', weight: 1.35 },
+        { from: 'bca-redis', to: 'bca-llm', weight: 1.8 }
+      ];
+
+      sequentialConnections.forEach(conn => {
+        newLinks.push({
+          id: `link-${conn.from}-${conn.to}`,
+          from: conn.from,
+          to: conn.to,
+          weight: conn.weight,
+          severed: false
+        });
+      });
+
+      // Feedback and check loops
+      const feedbackConnections = [
+        { from: 'bca-llm', to: 'bca-ingress', weight: 0.75 }, // Iteration loop
+        { from: 'bca-redis', to: 'bca-gateway', weight: 0.85 }  // Caching lookup loop
+      ];
+
+      feedbackConnections.forEach(conn => {
+        newLinks.push({
+          id: `link-${conn.from}-${conn.to}`,
+          from: conn.from,
+          to: conn.to,
+          weight: conn.weight,
+          severed: false
+        });
+      });
+
+    } else if (topologyType === 'glowing-grid') {
+      // 3x4 Grid topology (12 nodes)
+      const rows = 3;
+      const cols = 4;
+      const activations: ('ReLU' | 'SwiGLU' | 'GELU')[] = ['ReLU', 'SwiGLU', 'GELU'];
+      
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          const layerType = c === 0 ? 'input' : c === cols - 1 ? 'output' : (c === 1 ? 'hidden1' : 'hidden2');
+          newNodes.push({
+            id: `grid-${r}-${c}`,
+            label: `Lattice [Row ${r}, Col ${c}]`,
+            layer: layerType,
+            x: 100 + c * 150,
+            y: 65 + r * 100,
+            radius: 12,
+            bias: -0.2 + (r + c) * 0.15,
+            activation: activations[(r + c) % activations.length],
+            currentVal: 0.5
+          });
+        }
+      }
+
+      // Grid connections (horizontal and vertical)
+      for (let r = 0; r < rows; r++) {
+        for (let c = 0; c < cols; c++) {
+          // Connect to right neighbor
+          if (c < cols - 1) {
+            newLinks.push({
+              id: `link-grid-h-${r}-${c}`,
+              from: `grid-${r}-${c}`,
+              to: `grid-${r}-${c+1}`,
+              weight: 0.8 + (r * 0.1),
+              severed: false
+            });
+          }
+          // Connect to bottom neighbor
+          if (r < rows - 1) {
+            newLinks.push({
+              id: `link-grid-v-${r}-${c}`,
+              from: `grid-${r}-${c}`,
+              to: `grid-${r+1}-${c}`,
+              weight: 0.6 - (c * 0.05),
+              severed: false
+            });
+          }
+        }
+      }
+
+    } else if (topologyType === 'circular-mesh') {
+      // Central Node + satellite loop orbiting it
       newNodes.push({
-        id: `in-${i}`,
-        label: inputLabels[i],
+        id: 'hub-0',
+        label: 'CENTRAL ROUTER HUB',
         layer: 'input',
-        x: 80,
-        y: 60 + i * 110,
-        radius: 14,
-        bias: 0.12 * (i + 1),
-        activation: 'ReLU',
-        currentVal: 0.4
-      });
-    }
-
-    // Construct Hidden Layer 1 (Factoring & Constraint verification)
-    const hidden1Count = reasoningDepth;
-    const hidden1Labels = ['Synaptic Routing', 'Temporal Context Check', 'Safety Guardrail Evaluation', 'Dynamic Weighted Allocator', 'In-Memory Cache Match'];
-    for (let i = 0; i < hidden1Count; i++) {
-      newNodes.push({
-        id: `h1-${i}`,
-        label: hidden1Labels[i] || `Factoring Node H1-${i}`,
-        layer: 'hidden1',
-        x: 240,
-        y: 40 + i * 85,
-        radius: 12,
-        bias: -0.25 + i * 0.18,
+        x: 325,
+        y: 165,
+        radius: 18,
+        bias: 0.45,
         activation: 'SwiGLU',
-        currentVal: 0.6
+        currentVal: 0.7
       });
-    }
 
-    // Construct Hidden Layer 2 (Syntactic generation & Fallback Routing)
-    const hidden2Count = Math.max(3, reasoningDepth - 1);
-    const hidden2Labels = ['Inference Resolver', 'Circuit Breaker Monitor', 'Token-Weight Optimizer', 'Fallback Multi-Tier Arbiter'];
-    for (let i = 0; i < hidden2Count; i++) {
-      newNodes.push({
-        id: `h2-${i}`,
-        label: hidden2Labels[i] || `Generation Node H2-${i}`,
-        layer: 'hidden2',
-        x: 400,
-        y: 50 + i * 95,
-        radius: 12,
-        bias: 0.05 + i * 0.12,
-        activation: 'GELU',
-        currentVal: 0.5
+      const satelliteCount = 6;
+      const satLabels = ['Sentinel Node A', 'Sentinel Node B', 'Sentinel Node C', 'Sentinel Node D', 'Sentinel Node E', 'Sentinel Node F'];
+      const acts: ('Sigmoid' | 'GELU' | 'ReLU')[] = ['Sigmoid', 'GELU', 'ReLU'];
+
+      for (let i = 0; i < satelliteCount; i++) {
+        const angle = (i * 2 * Math.PI) / satelliteCount;
+        const xCoord = 325 + 110 * Math.cos(angle);
+        const yCoord = 165 + 110 * Math.sin(angle);
+        const layerType = i < 2 ? 'hidden1' : i < 4 ? 'hidden2' : 'output';
+
+        newNodes.push({
+          id: `sat-${i}`,
+          label: satLabels[i],
+          layer: layerType,
+          x: xCoord,
+          y: yCoord,
+          radius: 12,
+          bias: -0.1 + i * 0.12,
+          activation: acts[i % acts.length],
+          currentVal: 0.4
+        });
+
+        // Link satellite to Hub
+        newLinks.push({
+          id: `link-hub-sat-${i}`,
+          from: 'hub-0',
+          to: `sat-${i}`,
+          weight: 1.15 - i * 0.08,
+          severed: false
+        });
+
+        // Link satellites sequentially in outer ring
+        const nextIdx = (i + 1) % satelliteCount;
+        newLinks.push({
+          id: `link-ring-${i}-${nextIdx}`,
+          from: `sat-${i}`,
+          to: `sat-${nextIdx}`,
+          weight: 0.75,
+          severed: false
+        });
+      }
+
+    } else {
+      // Default: feedforward (Standard Multi-Layer)
+      // Construct Input Layer
+      const inputCount = 3;
+      const inputLabels = ['Prompt Embeddings', 'Safety Guidelines', 'Device Context'];
+      for (let i = 0; i < inputCount; i++) {
+        newNodes.push({
+          id: `in-${i}`,
+          label: inputLabels[i],
+          layer: 'input',
+          x: 80,
+          y: 60 + i * 110,
+          radius: 14,
+          bias: 0.12 * (i + 1),
+          activation: 'ReLU',
+          currentVal: 0.4
+        });
+      }
+
+      // Construct Hidden Layer 1
+      const hidden1Count = reasoningDepth;
+      const hidden1Labels = ['Synaptic Routing', 'Temporal Context Check', 'Safety Guardrail Evaluation', 'Dynamic Weighted Allocator', 'In-Memory Cache Match'];
+      for (let i = 0; i < hidden1Count; i++) {
+        newNodes.push({
+          id: `h1-${i}`,
+          label: hidden1Labels[i] || `Factoring Node H1-${i}`,
+          layer: 'hidden1',
+          x: 240,
+          y: 40 + i * 85,
+          radius: 12,
+          bias: -0.25 + i * 0.18,
+          activation: 'SwiGLU',
+          currentVal: 0.6
+        });
+      }
+
+      // Construct Hidden Layer 2
+      const hidden2Count = Math.max(3, reasoningDepth - 1);
+      const hidden2Labels = ['Inference Resolver', 'Circuit Breaker Monitor', 'Token-Weight Optimizer', 'Fallback Multi-Tier Arbiter'];
+      for (let i = 0; i < hidden2Count; i++) {
+        newNodes.push({
+          id: `h2-${i}`,
+          label: hidden2Labels[i] || `Generation Node H2-${i}`,
+          layer: 'hidden2',
+          x: 400,
+          y: 50 + i * 95,
+          radius: 12,
+          bias: 0.05 + i * 0.12,
+          activation: 'GELU',
+          currentVal: 0.5
+        });
+      }
+
+      // Construct Output Layer
+      const outputCount = 2;
+      const outputLabels = ['Completion Tokens', 'Telemetry Ledger Ingest'];
+      for (let i = 0; i < outputCount; i++) {
+        newNodes.push({
+          id: `out-${i}`,
+          label: outputLabels[i],
+          layer: 'output',
+          x: 560,
+          y: 110 + i * 140,
+          radius: 16,
+          bias: 0.45 * (i + 1),
+          activation: 'Softmax',
+          currentVal: 0.8
+        });
+      }
+
+      // Connect Layers
+      newNodes.filter(n => n.layer === 'input').forEach(inNode => {
+        newNodes.filter(n => n.layer === 'hidden1').forEach(h1Node => {
+          newLinks.push({
+            id: `link-${inNode.id}-${h1Node.id}`,
+            from: inNode.id,
+            to: h1Node.id,
+            weight: Math.random() * 2 - 0.8,
+            severed: false
+          });
+        });
       });
-    }
 
-    // Construct Output Layer (Final beam search token output)
-    const outputCount = 2;
-    const outputLabels = ['Completion Tokens', 'Telemetry Ledger Ingest'];
-    for (let i = 0; i < outputCount; i++) {
-      newNodes.push({
-        id: `out-${i}`,
-        label: outputLabels[i],
-        layer: 'output',
-        x: 560,
-        y: 110 + i * 140,
-        radius: 16,
-        bias: 0.45 * (i + 1),
-        activation: 'Softmax',
-        currentVal: 0.8
-      });
-    }
-
-    // Connect Layers
-    // Connect Input to Hidden 1
-    newNodes.filter(n => n.layer === 'input').forEach(inNode => {
       newNodes.filter(n => n.layer === 'hidden1').forEach(h1Node => {
-        newNodes.push(); // dummy
-        newLinks.push({
-          id: `link-${inNode.id}-${h1Node.id}`,
-          from: inNode.id,
-          to: h1Node.id,
-          weight: Math.random() * 2 - 0.8,
-          severed: false
+        newNodes.filter(n => n.layer === 'hidden2').forEach(h2Node => {
+          newLinks.push({
+            id: `link-${h1Node.id}-${h2Node.id}`,
+            from: h1Node.id,
+            to: h2Node.id,
+            weight: Math.random() * 2 - 1,
+            severed: false
+          });
         });
       });
-    });
 
-    // Connect Hidden 1 to Hidden 2
-    newNodes.filter(n => n.layer === 'hidden1').forEach(h1Node => {
       newNodes.filter(n => n.layer === 'hidden2').forEach(h2Node => {
-        newLinks.push({
-          id: `link-${h1Node.id}-${h2Node.id}`,
-          from: h1Node.id,
-          to: h2Node.id,
-          weight: Math.random() * 2 - 1,
-          severed: false
+        newNodes.filter(n => n.layer === 'output').forEach(outNode => {
+          newLinks.push({
+            id: `link-${h2Node.id}-${outNode.id}`,
+            from: h2Node.id,
+            to: outNode.id,
+            weight: Math.random() * 1.5 - 0.3,
+            severed: false
+          });
         });
       });
-    });
-
-    // Connect Hidden 2 to Output
-    newNodes.filter(n => n.layer === 'hidden2').forEach(h2Node => {
-      newNodes.filter(n => n.layer === 'output').forEach(outNode => {
-        newLinks.push({
-          id: `link-${h2Node.id}-${outNode.id}`,
-          from: h2Node.id,
-          to: outNode.id,
-          weight: Math.random() * 1.5 - 0.3,
-          severed: false
-        });
-      });
-    });
+    }
 
     setNodes(newNodes);
     setLinks(newLinks);
-    particlesRef.current = []; // Reset particles
-  }, [reasoningDepth]);
+  }, [reasoningDepth, topologyType]);
 
-  // Generate a particle pulse traversing the network
-  const spawnPulse = () => {
-    if (nodes.length === 0 || links.length === 0) return;
-    
-    // Choose starting input nodes
-    const inputNodes = nodes.filter(n => n.layer === 'input');
-    inputNodes.forEach(inNode => {
-      // Find connecting links
-      const outgoing = links.filter(l => l.from === inNode.id && !l.severed);
-      outgoing.forEach(link => {
-        const targetNode = nodes.find(n => n.id === link.to);
-        if (targetNode) {
-          particlesRef.current.push({
-            id: `p-${Date.now()}-${Math.random()}`,
-            fromNode: inNode,
-            toNode: targetNode,
-            progress: 0,
-            speed: (0.012 + Math.random() * 0.015) * simulationSpeed,
-            color: activeThemeProfile === 'neon-yellow' ? '#e5ff55' : (activeThemeProfile === 'spectral-fire' ? '#ff5533' : '#33e5ff')
-          });
-        }
-      });
-    });
-
-    addLog(`[Neural Net] Dispatched synchronized token pulse across ${links.filter(l => !l.severed).length} active connections.`, 'info');
-  };
-
-  // Periodic random idle pulses
-  useEffect(() => {
-    const timer = setInterval(() => {
-      if (Math.random() > 0.4) {
-        spawnPulse();
-      }
-    }, 2500);
-    return () => clearInterval(timer);
-  }, [nodes, links, simulationSpeed, activeThemeProfile]);
-
-  // Render loop for Neural Canvas
-  useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    let animFrameId: number;
-
-    const draw = () => {
-      // Clear canvas with deep transparent backdrop matching the dark UI
-      ctx.clearRect(0, 0, canvas.width, canvas.height);
-      
-      // Draw Grid lines inside canvas for highly analytical visual alignment
-      ctx.strokeStyle = 'rgba(63, 63, 70, 0.08)';
-      ctx.lineWidth = 1;
-      const gridSize = 40;
-      for (let x = 0; x < canvas.width; x += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(x, 0);
-        ctx.lineTo(x, canvas.height);
-        ctx.stroke();
-      }
-      for (let y = 0; y < canvas.height; y += gridSize) {
-        ctx.beginPath();
-        ctx.moveTo(0, y);
-        ctx.lineTo(canvas.width, y);
-        ctx.stroke();
-      }
-
-      // Draw Connection Links
-      links.forEach(link => {
-        const fromNode = nodes.find(n => n.id === link.from);
-        const toNode = nodes.find(n => n.id === link.to);
-        if (!fromNode || !toNode) return;
-
-        ctx.beginPath();
-        ctx.moveTo(fromNode.x, fromNode.y);
-        ctx.lineTo(toNode.x, toNode.y);
-
-        if (link.severed) {
-          ctx.strokeStyle = 'rgba(239, 68, 68, 0.15)';
-          ctx.lineWidth = 1;
-          ctx.setLineDash([3, 3]);
-        } else {
-          ctx.setLineDash([]);
-          // Map connection strength / safety weight to color and width
-          const intensity = Math.min(1, Math.max(0.1, (link.weight + 1) / 2));
-          ctx.lineWidth = 1 + intensity * 2;
-          
-          if (activeThemeProfile === 'neon-yellow') {
-            ctx.strokeStyle = `rgba(229, 255, 85, ${intensity * safetyThreshold})`;
-          } else if (activeThemeProfile === 'spectral-fire') {
-            ctx.strokeStyle = `rgba(239, 68, 68, ${intensity * safetyThreshold})`;
-          } else {
-            ctx.strokeStyle = `rgba(6, 182, 212, ${intensity * safetyThreshold})`;
-          }
-        }
-        ctx.stroke();
-      });
-      ctx.setLineDash([]);
-
-      // Draw particles (pulsing tokens travelling along synaptic wires)
-      particlesRef.current = particlesRef.current.filter(p => {
-        p.progress += p.speed;
-        if (p.progress >= 1) {
-          // Spawn next hop particle from target node to downstream nodes to propagate pulse
-          const nextHopLinks = links.filter(l => l.from === p.toNode.id && !l.severed);
-          nextHopLinks.forEach(link => {
-            const nextTarget = nodes.find(n => n.id === link.to);
-            if (nextTarget) {
-              particlesRef.current.push({
-                id: `p-next-${Date.now()}-${Math.random()}`,
-                fromNode: p.toNode,
-                toNode: nextTarget,
-                progress: 0,
-                speed: (0.015 + Math.random() * 0.015) * simulationSpeed,
-                color: p.color
-              });
-            }
-          });
-
-          // Trigger brief flash activation on target node
-          p.toNode.currentVal = 1.0;
-          return false;
-        }
-
-        // Calculate visual position
-        const currentX = p.fromNode.x + (p.toNode.x - p.fromNode.x) * p.progress;
-        const currentY = p.fromNode.y + (p.toNode.y - p.fromNode.y) * p.progress;
-
-        // Draw particle glowing dot
-        ctx.beginPath();
-        ctx.arc(currentX, currentY, 3.5, 0, 2 * Math.PI);
-        ctx.fillStyle = p.color;
-        ctx.shadowColor = p.color;
-        ctx.shadowBlur = 8;
-        ctx.fill();
-        ctx.shadowBlur = 0; // reset shadow
-
-        return true;
-      });
-
-      // Draw Nodes
-      nodes.forEach(node => {
-        // Slowly decay activation flare values back to 0.4
-        if (node.currentVal > 0.4) {
-          node.currentVal -= 0.015;
-        }
-
-        // Draw glow ring if highly active
-        if (node.currentVal > 0.5) {
-          ctx.beginPath();
-          ctx.arc(node.x, node.y, node.radius + 6, 0, 2 * Math.PI);
-          if (activeThemeProfile === 'neon-yellow') {
-            ctx.fillStyle = `rgba(229, 255, 85, ${node.currentVal * 0.15})`;
-          } else if (activeThemeProfile === 'spectral-fire') {
-            ctx.fillStyle = `rgba(239, 68, 68, ${node.currentVal * 0.15})`;
-          } else {
-            ctx.fillStyle = `rgba(6, 182, 212, ${node.currentVal * 0.15})`;
-          }
-          ctx.fill();
-        }
-
-        // Draw outer ring
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, node.radius, 0, 2 * Math.PI);
-        ctx.strokeStyle = inspectedNode?.id === node.id ? '#ffffff' : 'rgba(161, 161, 170, 0.4)';
-        ctx.lineWidth = inspectedNode?.id === node.id ? 2.5 : 1.5;
-        ctx.stroke();
-
-        // Draw node center colored by layer / activation profile
-        ctx.beginPath();
-        ctx.arc(node.x, node.y, node.radius - 2.5, 0, 2 * Math.PI);
-        
-        let colorStr = '#3f3f46';
-        if (node.layer === 'input') {
-          colorStr = 'rgba(59, 130, 246, 0.8)'; // Blue
-        } else if (node.layer === 'hidden1' || node.layer === 'hidden2') {
-          // Scaled by safety/temperature controls
-          if (activeThemeProfile === 'neon-yellow') {
-            colorStr = `rgba(229, 255, 85, ${node.currentVal})`;
-          } else if (activeThemeProfile === 'spectral-fire') {
-            colorStr = `rgba(239, 68, 68, ${node.currentVal})`;
-          } else {
-            colorStr = `rgba(6, 182, 212, ${node.currentVal})`;
-          }
-        } else {
-          colorStr = 'rgba(16, 185, 129, 0.85)'; // Emerald for output
-        }
-
-        ctx.fillStyle = colorStr;
-        ctx.fill();
-
-        // Draw localized neuron wire label inside canvas for highly premium visual fidelity
-        ctx.fillStyle = inspectedNode?.id === node.id ? '#ffffff' : 'rgba(212, 212, 216, 0.6)';
-        ctx.font = 'bold 8px monospace';
-        ctx.textAlign = 'center';
-        
-        // Trim labels to preserve typography bounds
-        const trimmedLabel = node.label.length > 12 ? node.label.substring(0, 10) + '..' : node.label;
-        ctx.fillText(trimmedLabel, node.x, node.y - node.radius - 6);
-      });
-
-      // Human Brain Geometric Cage Overlay (Image 2 aesthetic)
-      if (symmetryMode) {
-        ctx.strokeStyle = 'rgba(251, 191, 36, 0.1)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        // Render stylized polygon cage around center
-        const centerX = canvas.width / 2;
-        const centerY = canvas.height / 2;
-        const radius = 110;
-        for (let i = 0; i < 8; i++) {
-          const angle = (i * Math.PI) / 4;
-          const x = centerX + Math.cos(angle) * radius;
-          const y = centerY + Math.sin(angle) * radius;
-          if (i === 0) ctx.moveTo(x, y);
-          else ctx.lineTo(x, y);
-        }
-        ctx.closePath();
-        ctx.stroke();
-
-        // Render central bridge representing synaptic brain hemispheres
-        ctx.strokeStyle = 'rgba(251, 191, 36, 0.15)';
-        ctx.beginPath();
-        ctx.moveTo(centerX, centerY - 130);
-        ctx.lineTo(centerX, centerY + 130);
-        ctx.stroke();
-      }
-
-      animFrameId = requestAnimationFrame(draw);
-    };
-
-    draw();
-
-    return () => {
-      cancelAnimationFrame(animFrameId);
-    };
-  }, [nodes, links, inspectedNode, activeThemeProfile, safetyThreshold, simulationSpeed, tempBias, symmetryMode]);
-
-  // Click handler to inspect nodes
-  const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const rect = canvas.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const clickY = e.clientY - rect.top;
-
-    // Search for clicked node
-    const found = nodes.find(node => {
-      const dist = Math.sqrt((node.x - clickX) ** 2 + (node.y - clickY) ** 2);
-      return dist <= node.radius + 8;
-    });
-
-    if (found) {
-      setInspectedNode(found);
-      addLog(`[Node Inspector] Inspected node "${found.label}" (Layer: ${found.layer.toUpperCase()}) | Active Activation: ${found.activation}`, 'info');
-    } else {
-      setInspectedNode(null);
-    }
-  };
-
-  // Sever or restore connections (Chaos Injection)
-  const handleToggleNodeLink = (linkId: string) => {
+  // Handle Chaos toggle links
+  const handleToggleNodeLink = async (linkId: string) => {
+    let nextState = false;
     setLinks(prev => prev.map(l => {
       if (l.id === linkId) {
-        const nextState = !l.severed;
-        addLog(`[Chaos Injector] connection "${linkId}" ${nextState ? 'SEVERED' : 'RESTORED'}.`, nextState ? 'warn' : 'success');
+        nextState = !l.severed;
+        addLog(`[Chaos Injector] Synapse "${linkId}" ${nextState ? 'SEVERED' : 'RESTORED'}.`, nextState ? 'warn' : 'success');
         return { ...l, severed: nextState };
       }
       return l;
     }));
+
+    try {
+      await fetch('/api/system/chaos/disrupt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          targetId: linkId,
+          action: nextState ? 'add' : 'remove'
+        })
+      });
+      fetchDeepHealth();
+    } catch (e: any) {
+      console.error('Failed to notify disruptor to server', e);
+    }
   };
 
-  const handleRestoreAllLinks = () => {
+  const handleRestoreAllLinks = async () => {
     setLinks(prev => prev.map(l => ({ ...l, severed: false })));
     addLog('[Chaos Injector] All severed network synapses restored to operational capacity.', 'success');
+    
+    try {
+      await fetch('/api/system/chaos/disrupt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'clear' })
+      });
+      fetchDeepHealth();
+    } catch (e: any) {
+      console.error('Failed to clear disruptors on server', e);
+    }
   };
 
-  // Fetch deep health stats
+  // Fetch deep health stats from API
   const fetchDeepHealth = async () => {
     setIsPolling(true);
     try {
@@ -606,14 +491,26 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
     }
   };
 
+  const handleToggleChallengeMode = async () => {
+    try {
+      const res = await fetch('/api/challenge/toggle', { method: 'POST' });
+      if (res.ok) {
+        const data = await res.json();
+        addLog(`[ChallengeToken] Challenge handshake enforcement toggled: ${data.challengeModeActive ? 'ENABLED' : 'DISABLED'}`, data.challengeModeActive ? 'warn' : 'success');
+        fetchDeepHealth();
+      }
+    } catch (e: any) {
+      console.error('Failed to toggle challenge mode', e);
+    }
+  };
+
   useEffect(() => {
     fetchDeepHealth();
-    // Poll deep health every 15 seconds
     const interval = setInterval(fetchDeepHealth, 15000);
     return () => clearInterval(interval);
   }, []);
 
-  // Run Real AI reasoning (Tier routing)
+  // Run real AI reasoning request
   const handleRunReasoning = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!prompt.trim() || isLoading) return;
@@ -622,12 +519,55 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
     setAiResponse('');
     setReasoningText('');
     setTokensEarned(null);
+    setIsMiningChallenge(false);
+    setChallengeStatus('');
 
-    // Trigger instant canvas pulse
-    spawnPulse();
+    let challengeResponseData = null;
 
-    // Add immediate local log
-    addLog(`[UI] Dispatching reasoning task: "${prompt.substring(0, 45)}..."`, 'info');
+    // Proof-of-Work Handshake if Challenge Mode is active on the server
+    if (healthData?.challengeMode) {
+      setIsMiningChallenge(true);
+      setChallengeStatus('Acquiring high-entropy challenge salt from gateway...');
+      addLog('[ChallengeToken] Requesting cryptographic challenge payload...', 'info');
+
+      try {
+        const challReq = await fetch('/api/challenge/request', { method: 'POST' });
+        if (challReq.ok) {
+          const { salt, timestamp, target } = await challReq.json();
+          setChallengeStatus(`Solving proof-of-work puzzle. Difficulty: "${target}"...`);
+          addLog(`[ChallengeToken] Cryptographic challenge received: salt="${salt}", target="${target}". Starting proof-of-work...`, 'info');
+
+          // Artificial delay for visual premium look & feel
+          await new Promise(resolve => setTimeout(resolve, 800));
+
+          let nonce = 0;
+          let solved = false;
+          
+          while (!solved && nonce < 1000000) {
+            nonce++;
+            const candidate = `${timestamp}-${salt}-${nonce}`;
+            const msgBuffer = new TextEncoder().encode(candidate);
+            const hashBuffer = await window.crypto.subtle.digest('SHA-256', msgBuffer);
+            const hashArray = Array.from(new Uint8Array(hashBuffer));
+            const hashHex = hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+
+            if (hashHex.startsWith(target)) {
+              solved = true;
+              challengeResponseData = { timestamp, salt, target, nonce: nonce.toString() };
+              addLog(`[ChallengeToken] SUCCESS: Found partial SHA-256 collision! Nonce: "${nonce}", Hash: "${hashHex.substring(0, 16)}..."`, 'success');
+              setChallengeStatus('Handshake complete! Signing block signature...');
+              await new Promise(resolve => setTimeout(resolve, 300));
+            }
+          }
+        }
+      } catch (chalErr: any) {
+        addLog(`[ChallengeToken] Handshake request failed: ${chalErr.message}`, 'err');
+      } finally {
+        setIsMiningChallenge(false);
+      }
+    }
+
+    addLog(`[UI] Dispatching reasoning task to tier: ${activeModel}...`, 'info');
 
     try {
       const res = await fetch('/api/grok/ask', {
@@ -635,7 +575,8 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           message: prompt,
-          model: activeModel
+          model: activeModel,
+          challengeResponse: challengeResponseData
         })
       });
 
@@ -644,67 +585,58 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
         setAiResponse(data.response || '');
         setGrokMode(data.mode || 'Direct Engine');
         
-        // Extract reasoning if any
         if (data.reasoning) {
           setReasoningText(data.reasoning);
         }
 
-        // Token tracking
         const spent = data.usage?.completion_tokens || Math.floor(Math.random() * 450) + 180;
         setTokensEarned(spent);
         setTotalReasoningTokens(prev => prev + spent);
-        
-        // Trigger high frequency neural visualizer pulses
-        setTimeout(spawnPulse, 300);
-        setTimeout(spawnPulse, 600);
-        setTimeout(spawnPulse, 900);
 
-        addLog(`[Reasoning] Completion received via ${data.mode}. Spent ${spent} tokens.`, 'success');
+        addLog(`[Reasoning] Response complete via ${data.mode}. Used ${spent} tokens.`, 'success');
+        setPulseTrigger(p => p + 1);
         handleAddDemoToast(
           'Reasoning Step Complete', 
-          `Processed task via ${data.mode}. Spent ${spent} reasoning tokens securely.`,
+          `Processed task via ${data.mode}. Consumed ${spent} reasoning tokens securely.`,
           'info'
         );
         setPrompt('');
       } else {
         const errText = await res.text();
-        setAiResponse(`Error from server: ${errText}`);
-        addLog(`[Reasoning] Failed with status ${res.status}`, 'err');
+        let parsedErr = errText;
+        try { parsedErr = JSON.parse(errText).error; } catch {}
+        setAiResponse(`Inference server mismatch: ${parsedErr}`);
+        addLog(`[Reasoning] Failed with status ${res.status}: ${parsedErr}`, 'err');
         handleAddDemoToast(
-          'Reasoning Node Failover',
-          `Direct inference failed (HTTP ${res.status}). Initiating fallback path.`,
-          'warning'
+          'Verification Mismatch',
+          `Reasoning dispatch blocked: ${parsedErr}`,
+          'critical'
         );
       }
     } catch (err: any) {
-      setAiResponse(`Failed to fetch: ${err.message}`);
+      setAiResponse(`Failover fault: ${err.message}`);
       addLog(`[Reasoning] Exception: ${err.message}`, 'err');
-      handleAddDemoToast(
-        'Circuit Breaker Tripped',
-        `Critical timeout/connection exception: ${err.message}. Failover isolated.`,
-        'critical'
-      );
     } finally {
       setIsLoading(false);
-      fetchDeepHealth(); // update health stats
+      setIsMiningChallenge(false);
+      fetchDeepHealth();
     }
   };
 
-  // Trigger telemetry ingestion with atomic token bucket on the server
+  // Simulate Telemetry rate limiter pulse
   const handleIngestTelemetry = async () => {
     if (isIngesting) return;
     setIsIngesting(true);
     setTelemetryCount(prev => prev + 1);
 
-    // Spurt devices syncing simulation
-    setDevices(prev => prev.map(d => ({ ...d, status: 'syncing', ping: Math.max(5, d.ping - 4) })));
+    setDevices(prev => prev.map(d => ({ ...d, status: 'syncing', ping: Math.max(4, d.ping - 3) })));
 
     try {
       const res = await fetch('/api/telemetry/ingest', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          event: `User-triggered rate-limiter pulse #${telemetryCount + 1}`,
+          event: `Simulated Telemetry Pulse #${telemetryCount + 1}`,
           source: 'TokenConsole'
         })
       });
@@ -712,8 +644,8 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
       if (res.ok) {
         setRateLimitStatus('nominal');
         setRateLimitError('');
+        setPulseTrigger(p => p + 1);
         addLog(`[Ingest] Ingested telemetry point successfully. Quota status: 200 OK`, 'success');
-        // Restore synced statuses
         setTimeout(() => {
           setDevices(prev => prev.map(d => ({ ...d, status: 'synced', ping: d.ping + 2 })));
         }, 1200);
@@ -726,7 +658,6 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
           'Telemetry rate limit bucket exhausted. Throttling requests to protect SQLite cache.',
           'escalation'
         );
-        // Force random device offline to illustrate capacity exhaustion
         setDevices(prev => prev.map((d, index) => index === 2 ? { ...d, status: 'offline' } : d));
       } else {
         addLog(`[Ingest] Error ${res.status}`, 'warn');
@@ -738,7 +669,7 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
     }
   };
 
-  // Circuit Breaker Controls
+  // Circuit Breaker Chaos triggers
   const toggleCircuitBreaker = async (action: 'trip' | 'reset') => {
     setIsTripping(true);
     try {
@@ -748,6 +679,7 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
         
       const res = await fetch(endpoint, { method: 'POST' });
       if (res.ok) {
+        setPulseTrigger(p => p + 1);
         addLog(`[Chaos] Groq Circuit Breaker successfully ${action === 'trip' ? 'TRIPPED' : 'RESET'}`, action === 'trip' ? 'warn' : 'success');
         handleAddDemoToast(
           action === 'trip' ? 'Circuit Breaker Tripped' : 'Circuit Breaker Reset',
@@ -765,7 +697,6 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
     }
   };
 
-  // Log helper
   const addLog = (msg: string, type: 'info' | 'warn' | 'success' | 'err') => {
     const time = new Date().toTimeString().split(' ')[0];
     setDispatchLogs(prev => [
@@ -774,19 +705,16 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
     ].slice(0, 50));
   };
 
-  // Formatter for numbers
   const formatNumber = (num: number) => num.toLocaleString();
-
-  // Percentage calculations
   const percentageOfBudget = Math.round((totalReasoningTokens / budgetLimit) * 100);
 
   return (
-    <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto pb-24">
-      {/* Page Header */}
+    <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto pb-24 font-sans text-zinc-300">
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-zinc-800 pb-4">
         <div>
           <div className="flex items-center gap-2">
-            <span className="bg-yellow-500/20 text-yellow-400 text-xs px-2.5 py-0.5 rounded-full font-mono uppercase tracking-wider font-bold animate-pulse">
+            <span className="bg-yellow-500/20 text-yellow-400 text-xs px-2.5 py-0.5 rounded-full font-mono uppercase tracking-wider font-bold animate-pulse border border-yellow-500/30">
               Reasoning Engine Active
             </span>
             <div className="flex items-center gap-1 text-[10px] text-green-400 font-mono">
@@ -794,10 +722,10 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
               TOPOLOGY SYNCED
             </div>
           </div>
-          <h2 className="text-xl sm:text-2xl font-bold text-zinc-100 mt-1 flex items-center gap-2">
+          <h2 className="text-xl sm:text-2xl font-bold text-zinc-100 mt-1 flex items-center gap-2 font-mono">
             <Brain className="w-5 sm:w-6 h-5 sm:h-6 text-yellow-400" /> KILO Cognitive Brain & Token Console
           </h2>
-          <p className="text-xs text-zinc-400 mt-1">
+          <p className="text-xs text-zinc-400 mt-1 font-mono">
             Real-time visual neural networks, active synapse controls, persistent local telemetry, and multi-device DB sync monitoring.
           </p>
         </div>
@@ -805,147 +733,46 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
         <button 
           onClick={fetchDeepHealth}
           disabled={isPolling}
-          className="flex items-center gap-2 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs px-3 py-2 rounded-lg border border-zinc-700 self-start sm:self-center transition-all"
+          className="flex items-center gap-2 bg-zinc-900 hover:bg-zinc-800 text-zinc-200 text-xs px-3 py-2 rounded-lg border border-zinc-800 self-start sm:self-center transition-all font-mono"
         >
           <RefreshCw className={`w-3.5 h-3.5 ${isPolling ? 'animate-spin' : ''}`} />
           <span>{isPolling ? 'Synchronizing...' : 'Sync Telemetry Logs'}</span>
         </button>
       </div>
 
-      {/* NEURAL NET MESH ENGINE & CONTROLS (Image 1 & 2 Concept) */}
+      {/* Grid: Visualizer and Fault Injection */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
-        {/* Left/Middle: Live HTML5 Canvas Neural Network */}
-        <div className="lg:col-span-2 bg-[#090d13] border border-zinc-800/80 rounded-xl p-4 sm:p-5 space-y-4 relative overflow-hidden flex flex-col justify-between">
-          <div className="flex items-center justify-between z-10">
-            <div>
-              <h3 className="text-sm font-bold text-zinc-100 flex items-center gap-2 font-mono">
-                <Activity className="w-4 h-4 text-[#e5ff55]" /> INTERACTIVE REASONING TOPOLOGY MESH
-              </h3>
-              <p className="text-[10px] text-zinc-500 font-mono">Click any node to inspect its weights, biases, and active activation function.</p>
-            </div>
-
-            <div className="flex gap-2">
-              <button 
-                onClick={spawnPulse}
-                className="bg-[#e5ff55]/10 hover:bg-[#e5ff55]/20 text-[#e5ff55] border border-[#e5ff55]/30 text-[10px] px-2.5 py-1 rounded font-mono font-bold transition-all"
-              >
-                Trigger Pulse
-              </button>
-              <button 
-                onClick={handleRestoreAllLinks}
-                className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 text-[10px] px-2 py-1 rounded font-mono transition-all"
-              >
-                Reset Faults
-              </button>
-            </div>
-          </div>
-
-          {/* Canvas Component with size bounds */}
-          <div className="relative w-full h-[320px] bg-zinc-950/60 rounded-xl border border-zinc-900/80 flex items-center justify-center cursor-crosshair">
-            <canvas 
-              ref={canvasRef} 
-              width={640} 
-              height={320}
-              onClick={handleCanvasClick}
-              className="w-full h-full max-w-full rounded-xl"
-            />
-
-            {/* Neural inspector floating details card overlay */}
-            {inspectedNode && (
-              <div className="absolute bottom-3 left-3 bg-zinc-950/95 border border-zinc-800/90 rounded-lg p-3 w-64 text-[10px] font-mono text-zinc-300 shadow-2xl space-y-1.5 z-20">
-                <div className="flex items-center justify-between border-b border-zinc-800 pb-1">
-                  <span className="font-bold text-yellow-400">NODE METRICS</span>
-                  <button onClick={() => setInspectedNode(null)} className="text-zinc-600 hover:text-zinc-400 font-bold">X</button>
-                </div>
-                <div><span className="text-zinc-500">Label:</span> <span className="text-zinc-200 font-bold">{inspectedNode.label}</span></div>
-                <div><span className="text-zinc-500">Layer:</span> <span className="text-blue-400 font-bold uppercase">{inspectedNode.layer}</span></div>
-                <div><span className="text-zinc-500">Activation:</span> <span className="text-emerald-400">{inspectedNode.activation}</span></div>
-                <div><span className="text-zinc-500">Local Bias:</span> <span className="text-amber-400">{inspectedNode.bias.toFixed(4)}</span></div>
-                <div><span className="text-zinc-500">Current Excitation:</span> <span className="text-yellow-400">{(inspectedNode.currentVal * 100).toFixed(1)}%</span></div>
-              </div>
-            )}
-          </div>
-
-          {/* Interactive controls panel for the mesh weights */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 bg-zinc-950/50 p-3 rounded-lg border border-zinc-900">
-            <div className="space-y-1">
-              <span className="text-[9px] text-zinc-500 font-mono flex items-center gap-1">
-                <Sliders className="w-3 h-3 text-yellow-400" /> Temperature Bias
-              </span>
-              <input 
-                type="range" 
-                min="0.1" 
-                max="1.5" 
-                step="0.05" 
-                value={tempBias} 
-                onChange={(e) => setTempBias(Number(e.target.value))}
-                className="w-full accent-yellow-400 h-1 bg-zinc-800 rounded-lg cursor-pointer"
-              />
-              <div className="text-[8px] text-zinc-400 text-right font-mono">{tempBias.toFixed(2)}</div>
-            </div>
-
-            <div className="space-y-1">
-              <span className="text-[9px] text-zinc-500 font-mono flex items-center gap-1">
-                <Sliders className="w-3 h-3 text-red-500" /> Synapse Safety
-              </span>
-              <input 
-                type="range" 
-                min="0.2" 
-                max="1.0" 
-                step="0.05" 
-                value={safetyThreshold} 
-                onChange={(e) => setSafetyThreshold(Number(e.target.value))}
-                className="w-full accent-red-400 h-1 bg-zinc-800 rounded-lg cursor-pointer"
-              />
-              <div className="text-[8px] text-zinc-400 text-right font-mono">{(safetyThreshold * 100).toFixed(0)}% limit</div>
-            </div>
-
-            <div className="space-y-1">
-              <span className="text-[9px] text-zinc-500 font-mono flex items-center gap-1">
-                <Layers className="w-3 h-3 text-blue-500" /> Layer Depth
-              </span>
-              <input 
-                type="range" 
-                min="2" 
-                max="5" 
-                step="1" 
-                value={reasoningDepth} 
-                onChange={(e) => setReasoningDepth(Number(e.target.value))}
-                className="w-full accent-blue-400 h-1 bg-zinc-800 rounded-lg cursor-pointer"
-              />
-              <div className="text-[8px] text-zinc-400 text-right font-mono">{reasoningDepth} logic nodes</div>
-            </div>
-
-            <div className="space-y-1">
-              <span className="text-[9px] text-zinc-500 font-mono flex items-center gap-1">
-                <Clock className="w-3 h-3 text-emerald-500" /> Sim Speed
-              </span>
-              <input 
-                type="range" 
-                min="0.5" 
-                max="3.0" 
-                step="0.25" 
-                value={simulationSpeed} 
-                onChange={(e) => setSimulationSpeed(Number(e.target.value))}
-                className="w-full accent-emerald-400 h-1 bg-zinc-800 rounded-lg cursor-pointer"
-              />
-              <div className="text-[8px] text-zinc-400 text-right font-mono">{simulationSpeed.toFixed(1)}x speed</div>
-            </div>
-          </div>
+        <div className="lg:col-span-2">
+          <NeuralNetMesh
+            safetyThreshold={safetyThreshold}
+            simulationSpeed={simulationSpeed}
+            tempBias={tempBias}
+            symmetryMode={symmetryMode}
+            topologyType={topologyType}
+            activeThemeProfile={activeThemeProfile}
+            nodes={nodes}
+            links={links}
+            setNodes={setNodes}
+            setLinks={setLinks}
+            inspectedNode={inspectedNode}
+            setInspectedNode={setInspectedNode}
+            addLog={addLog}
+            pulseTrigger={pulseTrigger}
+          />
         </div>
 
-        {/* Right: Synapse Connections (Chaos Controller) & 10 Enhancements Panel */}
-        <div className="bg-[#090d13] border border-zinc-800/80 rounded-xl p-4 sm:p-5 space-y-4 flex flex-col justify-between">
+        {/* Cognitive Fault Controller */}
+        <div className="bg-zinc-950/60 border border-zinc-800/80 rounded-xl p-4 sm:p-5 flex flex-col justify-between backdrop-blur-md shadow-xl hover:border-yellow-500/10 transition-all">
           <div className="space-y-3">
-            <h3 className="text-sm font-bold text-zinc-100 flex items-center gap-2 font-mono">
-              <ZapOff className="w-4 h-4 text-red-500" /> COGNITIVE FAULT INJECTION (CHAOS)
+            <h3 className="text-xs font-bold text-zinc-100 flex items-center gap-2 font-mono uppercase tracking-wider">
+              <ZapOff className="w-4 h-4 text-red-500 animate-pulse" />
+              Synaptic Connections (Chaos)
             </h3>
-            <p className="text-[11px] text-zinc-400 leading-normal">
+            <p className="text-[10px] text-zinc-400 leading-normal font-mono">
               Click synapses below to instantly sever connection weights and verify multi-tier fallback pathways in the terminal queue.
             </p>
 
-            <div className="space-y-2 max-h-48 overflow-y-auto pr-1">
+            <div className="space-y-1.5 max-h-48 overflow-y-auto pr-1">
               {links.slice(0, 15).map(link => {
                 const fNode = nodes.find(n => n.id === link.from);
                 const tNode = nodes.find(n => n.id === link.to);
@@ -957,7 +784,7 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
                     className={`w-full text-left p-2 rounded border font-mono text-[9px] flex items-center justify-between transition-all ${
                       link.severed 
                         ? 'bg-red-950/20 border-red-500/30 text-red-400 hover:bg-red-950/30' 
-                        : 'bg-zinc-950 hover:bg-zinc-900 border-zinc-900 text-zinc-300'
+                        : 'bg-zinc-900 border-zinc-800/60 text-zinc-300 hover:bg-zinc-800/80'
                     }`}
                   >
                     <span className="truncate">{fNode.label} ➔ {tNode.label}</span>
@@ -968,15 +795,34 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
             </div>
           </div>
 
-          <div className="border-t border-zinc-800/60 pt-4 space-y-2">
-            <div className="flex items-center justify-between">
-              <span className="text-[10px] text-zinc-500 uppercase font-mono">Mesh Profile</span>
-              <div className="flex gap-1">
+          <div className="border-t border-zinc-800/40 pt-4 mt-3 space-y-3">
+            <div className="flex flex-col gap-1 pb-1">
+              <span className="text-[9px] text-zinc-500 uppercase font-mono">Neural Topology Engine</span>
+              <div className="grid grid-cols-2 gap-1.5 font-mono">
+                {(['brainca-matrix', 'feedforward', 'glowing-grid', 'circular-mesh'] as const).map(type => (
+                  <button
+                    key={type}
+                    onClick={() => setTopologyType(type)}
+                    className={`px-2 py-1 rounded text-[8px] font-bold uppercase transition-all border ${
+                      topologyType === type 
+                        ? 'bg-yellow-500/15 border-yellow-500/45 text-yellow-400 font-extrabold' 
+                        : 'bg-zinc-900 border-zinc-800/60 text-zinc-400 hover:text-zinc-200 hover:border-zinc-700'
+                    }`}
+                  >
+                    {type === 'brainca-matrix' ? 'BraiNCA 7-Node' : type === 'feedforward' ? 'Feedforward' : type === 'glowing-grid' ? 'Lattice Grid' : 'Circular Hub'}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <div className="flex items-center justify-between border-t border-zinc-900 pt-2">
+              <span className="text-[9px] text-zinc-500 uppercase font-mono">Theme Mesh Profile</span>
+              <div className="flex gap-1 font-mono">
                 {(['neon-yellow', 'spectral-fire', 'cool-cyber'] as const).map(p => (
                   <button
                     key={p}
                     onClick={() => setActiveThemeProfile(p)}
-                    className={`px-2 py-0.5 rounded text-[8px] font-mono font-bold uppercase transition-all ${
+                    className={`px-1.5 py-0.5 rounded text-[8px] font-bold uppercase transition-all ${
                       activeThemeProfile === p 
                         ? 'bg-yellow-400 text-zinc-950' 
                         : 'bg-zinc-800 text-zinc-400 hover:text-zinc-200'
@@ -989,139 +835,51 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
             </div>
 
             <div className="flex items-center justify-between">
-              <span className="text-[10px] text-zinc-500 uppercase font-mono">Human-AI Mesh Grid</span>
+              <span className="text-[9px] text-zinc-500 uppercase font-mono">Geometric Lattice Cage</span>
               <button 
                 onClick={() => setSymmetryMode(!symmetryMode)}
-                className={`px-2 py-0.5 rounded text-[8px] font-mono font-bold uppercase transition-all ${
-                  symmetryMode ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40' : 'bg-zinc-800 text-zinc-500'
+                className={`px-1.5 py-0.5 rounded text-[8px] font-mono font-bold uppercase transition-all ${
+                  symmetryMode ? 'bg-amber-500/20 text-amber-400 border border-amber-500/40 animate-pulse' : 'bg-zinc-800 text-zinc-500'
                 }`}
               >
                 {symmetryMode ? 'GEOMETRIC ON' : 'GEOMETRIC OFF'}
               </button>
             </div>
+
+            <button 
+              onClick={handleRestoreAllLinks}
+              className="w-full text-center py-1 rounded bg-zinc-800 hover:bg-zinc-700 text-zinc-300 font-mono text-[9px] transition-all border border-zinc-700 mt-2"
+            >
+              Reset Fault Synapses
+            </button>
           </div>
         </div>
       </div>
 
-      {/* DEVICE SYNC TOPOLOGY GRID & DURABLE CACHING (Image 3 Concept) */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Device Synchronizer Block */}
-        <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-xl p-4 sm:p-5 md:col-span-2">
-          <div className="flex items-center justify-between border-b border-zinc-800 pb-3 mb-3">
-            <div>
-              <h3 className="text-xs font-bold text-zinc-100 uppercase tracking-wider flex items-center gap-1.5 font-mono">
-                <Laptop className="w-4 h-4 text-blue-400" /> KILO Multi-Device DB Sync Mesh
-              </h3>
-              <p className="text-[10px] text-zinc-500 font-mono">Real-time status of cache-synchronized edge nodes mapped to active Redis storage blocks.</p>
-            </div>
-            <span className="text-[9px] bg-blue-500/10 text-blue-400 px-2 py-0.5 rounded font-mono font-bold">
-              6 Active Clients
-            </span>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            {devices.map(dev => (
-              <div 
-                key={dev.id} 
-                className={`p-3 rounded-lg border font-mono text-[10px] space-y-1.5 relative overflow-hidden ${
-                  dev.status === 'synced' 
-                    ? 'bg-zinc-950/60 border-zinc-900/80' 
-                    : (dev.status === 'syncing' ? 'bg-blue-500/5 border-blue-500/20' : 'bg-red-500/5 border-red-500/20')
-                }`}
-              >
-                <div className="flex items-center justify-between">
-                  <span className="text-zinc-500 uppercase text-[9px]">Client Node</span>
-                  <span className={`w-1.5 h-1.5 rounded-full ${
-                    dev.status === 'synced' ? 'bg-green-500' : (dev.status === 'syncing' ? 'bg-blue-500 animate-ping' : 'bg-red-500')
-                  }`} />
-                </div>
-
-                <div className="font-bold text-zinc-200 flex items-center gap-1.5">
-                  {dev.type === 'laptop' && <Laptop className="w-3.5 h-3.5 text-zinc-400" />}
-                  {dev.type === 'phone' && <Smartphone className="w-3.5 h-3.5 text-zinc-400" />}
-                  {dev.type === 'tablet' && <Tablet className="w-3.5 h-3.5 text-zinc-400" />}
-                  <span>{dev.name}</span>
-                </div>
-
-                <div className="flex items-center justify-between text-[9px] text-zinc-500 pt-1 border-t border-zinc-900">
-                  <span>Ping Rate: <strong className="text-zinc-400">{dev.ping}ms</strong></span>
-                  <span className={dev.status === 'synced' ? 'text-green-400 font-bold' : (dev.status === 'syncing' ? 'text-blue-400' : 'text-red-400')}>
-                    {dev.status.toUpperCase()}
-                  </span>
-                </div>
-              </div>
-            ))}
-          </div>
+      {/* Grid: Device Sync Topology & Persistent Toast Center */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+        <div className="lg:col-span-2">
+          <DeviceSyncTopology devices={devices} />
         </div>
-
-        {/* PERSISTENT TOAST CENTER (DURABLE APP CACHE STATUS) */}
-        <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-xl p-4 sm:p-5 flex flex-col justify-between">
-          <div>
-            <div className="flex items-center justify-between border-b border-zinc-800 pb-3 mb-3">
-              <span className="text-zinc-400 text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5">
-                <Bell className="w-4 h-4 text-yellow-500" /> Persistent Toast Event Log
-              </span>
-              <button 
-                onClick={handleClearToasts}
-                className="text-zinc-500 hover:text-red-400 transition-colors"
-                title="Clear Persistent Events"
-              >
-                <Trash2 className="w-3.5 h-3.5" />
-              </button>
-            </div>
-
-            {persistedToasts.length === 0 ? (
-              <div className="py-6 text-center text-[11px] text-zinc-500 font-mono space-y-2">
-                <CheckCircle2 className="w-5 h-5 mx-auto text-zinc-600" />
-                <p>No historical events logged in LocalStorage.</p>
-                <button 
-                  onClick={() => handleAddDemoToast('Node Checkpoint Saved', 'Successfully committed local state chunk to memory ledger.', 'info')}
-                  className="text-yellow-400 hover:underline hover:text-yellow-300"
-                >
-                  Generate Test Event
-                </button>
-              </div>
-            ) : (
-              <div className="space-y-2 max-h-44 overflow-y-auto pr-1">
-                {persistedToasts.map((t, i) => (
-                  <div 
-                    key={t.id || i}
-                    className={`p-2 rounded border font-mono text-[10px] space-y-0.5 leading-normal ${
-                      t.severity === 'critical' || t.severity === 'escalation'
-                        ? 'bg-red-500/5 border-red-500/20 text-red-300'
-                        : (t.severity === 'warning' ? 'bg-yellow-500/5 border-yellow-500/10 text-yellow-300' : 'bg-zinc-950 border-zinc-900 text-zinc-300')
-                    }`}
-                  >
-                    <div className="flex items-center justify-between font-bold">
-                      <span className="truncate">{t.title}</span>
-                      <span className="text-[8px] uppercase tracking-wide px-1.5 py-0.25 bg-zinc-900 rounded font-bold">
-                        {t.severity || 'info'}
-                      </span>
-                    </div>
-                    <p className="text-[9px] text-zinc-400 leading-normal">{t.desc}</p>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="border-t border-zinc-800/60 pt-3 mt-4 flex items-center justify-between text-[10px] text-zinc-500 font-mono">
-            <span>Durable Storage:</span>
-            <span className="text-zinc-300 font-bold">{persistedToasts.length} Cached Incidents</span>
-          </div>
+        <div>
+          <PersistentToastTray
+            persistedToasts={persistedToasts}
+            handleClearToasts={handleClearToasts}
+            handleAddDemoToast={handleAddDemoToast}
+          />
         </div>
       </div>
 
       {/* Grid of Key Diagnostics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {/* Think Token Budget Meter */}
-        <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-xl p-4 sm:p-5 flex flex-col justify-between">
+      <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+        {/* Token Budget Meter */}
+        <div className="bg-zinc-950/60 border border-zinc-800/80 rounded-xl p-4 sm:p-5 flex flex-col justify-between backdrop-blur-md shadow-xl hover:border-yellow-500/10 transition-all">
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-zinc-400 text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5">
+              <span className="text-zinc-400 text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 font-mono">
                 <Brain className="w-4 h-4 text-yellow-500" /> Token Allocation Budget
               </span>
-              <span className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold ${percentageOfBudget >= 90 ? 'bg-red-500/10 text-red-400' : 'bg-yellow-500/10 text-yellow-400'}`}>
+              <span className={`text-[9px] px-2 py-0.5 rounded font-mono font-bold ${percentageOfBudget >= 90 ? 'bg-red-500/10 text-red-400' : 'bg-yellow-500/10 text-yellow-400'}`}>
                 {percentageOfBudget}% Used
               </span>
             </div>
@@ -1130,14 +888,13 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
               <span className="text-2xl sm:text-3xl font-extrabold text-zinc-100 tracking-tight font-mono">
                 {formatNumber(totalReasoningTokens)}
               </span>
-              <span className="text-xs text-zinc-500">/ {formatNumber(budgetLimit)} tokens</span>
+              <span className="text-xs text-zinc-500 font-mono">/ {formatNumber(budgetLimit)} tokens</span>
             </div>
 
-            {/* Slider to adjust daily cap */}
             <div className="mt-4 space-y-2">
-              <div className="flex items-center justify-between text-xs text-zinc-400">
-                <span className="flex items-center gap-1"><Sliders className="w-3 h-3 text-zinc-500" /> Daily Cap Limit</span>
-                <span className="font-mono text-zinc-300 font-bold">{formatNumber(budgetLimit)}</span>
+              <div className="flex items-center justify-between text-[11px] text-zinc-400 font-mono">
+                <span className="flex items-center gap-1"><Sliders className="w-3.5 h-3.5 text-zinc-500" /> Daily Cap Limit</span>
+                <span className="font-bold text-zinc-300 font-mono">{formatNumber(budgetLimit)}</span>
               </div>
               <input 
                 type="range" 
@@ -1146,27 +903,27 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
                 step="10000" 
                 value={budgetLimit} 
                 onChange={(e) => setBudgetLimit(Number(e.target.value))}
-                className="w-full accent-yellow-400 h-1.5 bg-zinc-800 rounded-lg appearance-none cursor-pointer"
+                className="w-full accent-yellow-400 h-1 bg-zinc-850 rounded-lg cursor-pointer appearance-none"
               />
             </div>
           </div>
 
-          <div className="border-t border-zinc-800/60 pt-3 mt-4 flex items-center gap-2 text-[11px] text-zinc-500">
+          <div className="border-t border-zinc-800/40 pt-3 mt-4 flex items-center gap-2 text-[10px] text-zinc-500 font-mono">
             <Flame className="w-3.5 h-3.5 text-orange-500" />
             <span>Reasoning engines consume up to 10x more tokens.</span>
           </div>
         </div>
 
-        {/* Upstash Redis Quota Alert */}
-        <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-xl p-4 sm:p-5 flex flex-col justify-between relative overflow-hidden group">
+        {/* Upstash Redis Quota Status */}
+        <div className="bg-zinc-950/60 border border-zinc-800/80 rounded-xl p-4 sm:p-5 flex flex-col justify-between relative overflow-hidden group backdrop-blur-md shadow-xl hover:border-red-500/10 transition-all">
           <div className="absolute top-0 right-0 w-24 h-24 bg-red-500/5 rounded-full blur-2xl -mr-6 -mt-6" />
           
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-zinc-400 text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5">
-                <Database className="w-4 h-4 text-emerald-500" /> Upstash Redis Quota Status
+              <span className="text-zinc-400 text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 font-mono">
+                <Database className="w-4 h-4 text-emerald-500" /> Upstash Redis Quota
               </span>
-              <span className="text-[10px] px-2 py-0.5 rounded bg-red-500/20 text-red-400 font-mono font-bold">
+              <span className="text-[9px] px-2 py-0.5 rounded bg-red-500/20 text-red-400 font-mono font-bold">
                 Exhaustion Imminent
               </span>
             </div>
@@ -1175,42 +932,42 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
               <span className="text-2xl sm:text-3xl font-extrabold text-red-400 tracking-tight font-mono">
                 482,450
               </span>
-              <span className="text-xs text-zinc-500">/ 500,000 requests (96.5%)</span>
+              <span className="text-xs text-zinc-500 font-mono">/ 500,000 (96.5%)</span>
             </div>
 
-            <p className="text-[10px] sm:text-[11px] text-zinc-400 mt-2.5 leading-relaxed">
+            <p className="text-[10px] text-zinc-400 mt-2.5 leading-relaxed font-mono">
               Heroku workers will crash if the Redis rate-limit quota is exceeded. 
-              <strong> PR #179 Mitigation Patches:</strong> Automatically fail-open to in-memory sliding windows with 10s command timeouts.
+              <strong> PR #179 Mitigation:</strong> Automatically fail-open to in-memory sliding windows.
             </p>
           </div>
 
-          <div className="border-t border-zinc-800/60 pt-3 mt-3 flex items-center gap-1.5 text-[10px] text-red-400/90 font-mono bg-red-500/5 p-1.5 rounded border border-red-500/10">
-            <AlertTriangle className="w-3.5 h-3.5 shrink-0 animate-bounce" />
+          <div className="border-t border-zinc-800/40 pt-3 mt-3 flex items-center gap-1.5 text-[9px] text-red-400/90 font-mono bg-red-500/5 p-1.5 rounded border border-red-500/10 shrink-0">
+            <Shield className="w-3.5 h-3.5 shrink-0 animate-pulse text-red-400" />
             <span>Resiliency backoff logic active. Workers shielded.</span>
           </div>
         </div>
 
-        {/* Telemetry Token Bucket Rate Limiter */}
-        <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-xl p-4 sm:p-5 flex flex-col justify-between">
+        {/* Telemetry Ingest Token Bucket Rate Limiter */}
+        <div className="bg-zinc-950/60 border border-zinc-800/80 rounded-xl p-4 sm:p-5 flex flex-col justify-between backdrop-blur-md shadow-xl hover:border-blue-500/10 transition-all">
           <div>
             <div className="flex items-center justify-between">
-              <span className="text-zinc-400 text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5">
-                <Activity className="w-4 h-4 text-blue-500" /> Telemetry Ingest Rate Limit
+              <span className="text-zinc-400 text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 font-mono">
+                <Activity className="w-4 h-4 text-blue-500" /> Telemetry Rate Limiter
               </span>
-              <span className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold ${rateLimitStatus === 'exceeded' ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
-                {rateLimitStatus === 'exceeded' ? 'RATE EXCEEDED' : 'NOMINAL'}
+              <span className={`text-[9px] px-2 py-0.5 rounded font-mono font-bold ${rateLimitStatus === 'exceeded' ? 'bg-red-500/20 text-red-400' : 'bg-emerald-500/10 text-emerald-400'}`}>
+                {rateLimitStatus === 'exceeded' ? 'LIMIT EXCEEDED' : 'NOMINAL'}
               </span>
             </div>
 
-            <div className="mt-3 bg-zinc-950/70 border border-zinc-800 rounded-lg p-2 flex items-center justify-between gap-2">
-              <div className="flex flex-col">
-                <span className="text-[10px] text-zinc-500 uppercase font-mono">Bucket Capacity</span>
-                <span className="text-xs font-mono font-bold text-zinc-300">100 Max / 10 fill rate</span>
+            <div className="mt-3 bg-zinc-900 border border-zinc-800/80 rounded-lg p-2 flex items-center justify-between gap-2">
+              <div className="flex flex-col font-mono">
+                <span className="text-[8px] text-zinc-500 uppercase">Bucket Capacity</span>
+                <span className="text-[10px] font-bold text-zinc-300">100 Max / 10 fill rate</span>
               </div>
               <button
                 onClick={handleIngestTelemetry}
                 disabled={isIngesting}
-                className="bg-blue-600 hover:bg-blue-500 text-zinc-100 font-bold px-3 py-1.5 rounded-md text-xs transition-colors self-center flex items-center gap-1 shadow-md active:scale-95"
+                className="bg-blue-600 hover:bg-blue-500 text-zinc-100 font-bold px-3 py-1.5 rounded text-[10px] transition-all self-center flex items-center gap-1 shadow-md active:scale-95 font-mono"
               >
                 <Zap className={`w-3 h-3 ${isIngesting ? 'animate-spin' : ''}`} />
                 <span>Simulate Ingest</span>
@@ -1218,36 +975,97 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
             </div>
 
             {rateLimitError ? (
-              <div className="mt-2 text-[10px] text-red-400 bg-red-500/5 border border-red-500/10 p-2 rounded leading-normal">
+              <div className="mt-2 text-[9px] text-red-400 bg-red-500/5 border border-red-500/10 p-2 rounded leading-normal font-mono">
                 {rateLimitError}
               </div>
             ) : (
-              <p className="text-[10px] text-zinc-500 mt-2.5">
-                Click "Simulate Ingest" rapidly to saturate the bucket and witness how the backend resiliently rejects overflowing telemetry before database bottlenecks happen.
+              <p className="text-[9px] text-zinc-500 mt-2.5 font-mono leading-relaxed">
+                Click "Simulate Ingest" rapidly to saturate the bucket and witness how the backend resiliently rejects overflowing telemetry.
               </p>
             )}
           </div>
 
-          <div className="border-t border-zinc-800/60 pt-3 mt-4 flex items-center justify-between text-[11px] text-zinc-400 font-mono">
+          <div className="border-t border-zinc-800/40 pt-3 mt-4 flex items-center justify-between text-[9px] text-zinc-500 font-mono">
             <span>Active Connections:</span>
-            <span className="text-blue-400 font-bold">12 Node Streams</span>
+            <span className="text-blue-400 font-bold">12 Streams</span>
+          </div>
+        </div>
+
+        {/* Neural Fallout & Challenge Handshake (New Card) */}
+        <div className="bg-zinc-950/60 border border-zinc-800/80 rounded-xl p-4 sm:p-5 flex flex-col justify-between relative overflow-hidden backdrop-blur-md shadow-xl hover:border-amber-500/10 transition-all">
+          <div>
+            <div className="flex items-center justify-between">
+              <span className="text-zinc-400 text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 font-mono">
+                <Shield className="w-4 h-4 text-amber-500" /> Neural Fallout Score
+              </span>
+              <span className={`text-[9px] px-2 py-0.5 rounded font-mono font-bold ${
+                (healthData?.fallout?.score || 0) >= 80 
+                  ? 'bg-red-500/20 text-red-400 animate-pulse' 
+                  : (healthData?.fallout?.score || 0) >= 40 
+                    ? 'bg-amber-500/20 text-amber-400' 
+                    : 'bg-green-500/10 text-green-400'
+              }`}>
+                {healthData?.fallout?.score || 0}% Decay
+              </span>
+            </div>
+
+            <div className="mt-3 flex items-center justify-between gap-1 border border-zinc-800/60 bg-zinc-900/40 p-2 rounded-lg">
+              <span className="text-[10px] text-zinc-400 font-mono">Challenge Handshake:</span>
+              <button
+                onClick={handleToggleChallengeMode}
+                className={`px-2 py-1 rounded text-[9px] font-bold font-mono transition-all border ${
+                  healthData?.challengeMode 
+                    ? 'bg-amber-500/15 border-amber-500/40 text-amber-400 font-extrabold animate-pulse' 
+                    : 'bg-zinc-800 border-zinc-700 text-zinc-400 hover:text-zinc-200'
+                }`}
+              >
+                {healthData?.challengeMode ? 'CTP ACTIVE' : 'CTP OFF'}
+              </button>
+            </div>
+
+            <div className="mt-3.5 space-y-2 text-[10px] text-zinc-400 font-mono leading-relaxed">
+              <div className="flex items-center justify-between">
+                <span className="text-zinc-500 text-[9px] uppercase">Throughput Drop:</span>
+                <span className="font-semibold text-zinc-300">-{healthData?.fallout?.throughputDrop || 0}%</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-zinc-500 text-[9px] uppercase">Active Disruptors:</span>
+                <span className="font-semibold text-zinc-300">{(healthData?.activeDisruptors?.length || 0)} node links</span>
+              </div>
+              <div className="flex items-center justify-between">
+                <span className="text-zinc-500 text-[9px] uppercase">Synaptic Latency:</span>
+                <span className="font-semibold text-zinc-300">+{healthData?.fallout?.syntheticLatencyMs || 0}ms</span>
+              </div>
+            </div>
+          </div>
+
+          <div className="border-t border-zinc-800/40 pt-3 mt-3 flex items-center justify-between text-[9px] text-zinc-500 font-mono">
+            <span>Decay State:</span>
+            <span className={`font-bold uppercase ${
+              (healthData?.fallout?.score || 0) >= 80 
+                ? 'text-red-500' 
+                : (healthData?.fallout?.score || 0) >= 40 
+                  ? 'text-amber-500' 
+                  : 'text-green-500'
+            }`}>
+              {healthData?.fallout?.decayState || 'NOMINAL'}
+            </span>
           </div>
         </div>
       </div>
 
       {/* Main interactive panel: Live AI Reasoning Playground & Real Circuit Breaker Test */}
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        
         {/* Left column: Live AI reasoning tool */}
-        <div className="lg:col-span-2 bg-zinc-900/40 border border-zinc-800/80 rounded-xl p-4 sm:p-5 space-y-4">
+        <div className="lg:col-span-2 bg-zinc-950/60 border border-zinc-800/80 rounded-xl p-4 sm:p-5 space-y-4 backdrop-blur-md shadow-xl hover:border-yellow-500/10 transition-all">
           <div className="flex items-center justify-between">
-            <h3 className="text-sm font-bold text-zinc-100 flex items-center gap-2 font-mono">
+            <h3 className="text-xs font-bold text-zinc-100 flex items-center gap-1.5 font-mono uppercase tracking-wider">
               <Sparkles className="w-4 h-4 text-yellow-400" /> End-to-End Live AI Reasoning Playground
             </h3>
             <select 
               value={activeModel}
               onChange={(e) => setActiveModel(e.target.value)}
-              className="bg-zinc-850 border border-zinc-800 text-zinc-300 text-[11px] rounded px-2 py-1 font-mono focus:outline-none focus:border-yellow-500"
+              className="bg-zinc-900 border border-zinc-800 text-zinc-300 text-[10px] rounded px-2 py-1 font-mono focus:outline-none focus:border-yellow-500"
             >
               <option value="deepseek-reasoner">DeepSeek R1 (Reasoning)</option>
               <option value="grok-3-fast">Grok 3 Fast (xAI Beta)</option>
@@ -1257,8 +1075,18 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
           </div>
 
           <p className="text-xs text-zinc-400 leading-normal font-mono">
-            This workspace is fully full-stack! Typing a query below routes a live execution request directly through our Express router. It executes through the multi-tier API client fallback and logs reasoning token telemetry.
+            This workspace is full-stack! Typing a query below routes a live execution request directly through our Express router, executing through the multi-tier API client fallback and logging reasoning token telemetry.
           </p>
+
+          {isMiningChallenge && (
+            <div className="bg-amber-500/10 border border-amber-500/30 text-amber-300 p-3 rounded-lg text-[11px] font-mono flex items-center gap-2.5 animate-pulse">
+              <RefreshCw className="w-4 h-4 animate-spin text-amber-400" />
+              <div className="flex-1">
+                <div className="font-bold uppercase tracking-wider text-[10px] text-amber-400">Challenge Handshake (POW Verification)</div>
+                <div className="text-[10px] text-zinc-300 mt-0.5">{challengeStatus}</div>
+              </div>
+            </div>
+          )}
 
           <form onSubmit={handleRunReasoning} className="flex gap-2">
             <input 
@@ -1267,22 +1095,22 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
               value={prompt}
               onChange={(e) => setPrompt(e.target.value)}
               disabled={isLoading}
-              className="flex-1 bg-zinc-950/80 border border-zinc-800 focus:border-yellow-500/50 rounded-lg px-3 py-2 text-xs sm:text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-yellow-500/20 font-mono"
+              className="flex-1 bg-black/40 border border-zinc-800/80 focus:border-yellow-500/50 rounded-lg px-3 py-2 text-xs text-zinc-100 placeholder-zinc-600 focus:outline-none focus:ring-1 focus:ring-yellow-500/20 font-mono"
             />
             <button 
               type="submit"
               disabled={isLoading || !prompt.trim()}
-              className="bg-yellow-400 hover:bg-yellow-500 text-zinc-950 font-bold px-4 py-2 rounded-lg text-xs sm:text-sm flex items-center gap-1.5 transition-colors shrink-0 disabled:opacity-40 font-mono"
+              className="bg-yellow-400 hover:bg-yellow-500 text-zinc-950 font-bold px-4 py-2 rounded-lg text-xs flex items-center gap-1.5 transition-all shrink-0 disabled:opacity-40 font-mono active:scale-95"
             >
-              <Play className="w-3.5 h-3.5 fill-current" />
+              <Play className="w-3 h-3 fill-current" />
               <span>{isLoading ? 'Thinking...' : 'Reason'}</span>
             </button>
           </form>
 
-          {/* AI Response Block with capture details */}
+          {/* AI Response Block */}
           {(isLoading || aiResponse || reasoningText) && (
-            <div className="border border-zinc-800 bg-zinc-950/50 rounded-lg p-3 sm:p-4 space-y-3 font-mono text-xs max-h-96 overflow-y-auto">
-              <div className="flex items-center justify-between text-[10px] text-zinc-500 pb-1.5 border-b border-zinc-850">
+            <div className="border border-zinc-800 bg-black/40 rounded-lg p-3 sm:p-4 space-y-3 font-mono text-xs max-h-96 overflow-y-auto">
+              <div className="flex items-center justify-between text-[9px] text-zinc-500 pb-1.5 border-b border-zinc-850">
                 <span>MODEL ROUTING STATUS</span>
                 <span className="text-yellow-400 flex items-center gap-1.5 font-mono">
                   <div className="w-1.5 h-1.5 bg-yellow-400 rounded-full animate-ping" />
@@ -1292,10 +1120,10 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
 
               {reasoningText && (
                 <div className="space-y-1">
-                  <div className="text-[10px] text-amber-400 font-bold flex items-center gap-1 font-mono">
+                  <div className="text-[9px] text-amber-400 font-bold flex items-center gap-1 font-mono">
                     <Brain className="w-3 h-3 text-amber-400" /> CAPTURED THINKING PROCESS (Reasoning):
                   </div>
-                  <pre className="text-[10px] bg-yellow-500/5 border border-yellow-500/10 p-2.5 rounded text-yellow-300 leading-normal whitespace-pre-wrap select-text font-mono">
+                  <pre className="text-[10px] bg-yellow-500/5 border border-yellow-500/15 p-2.5 rounded text-yellow-300 leading-normal whitespace-pre-wrap select-text font-mono">
                     {reasoningText}
                   </pre>
                 </div>
@@ -1303,10 +1131,10 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
 
               {aiResponse && (
                 <div className="space-y-1">
-                  <div className="text-[10px] text-emerald-400 font-bold flex items-center gap-1 font-mono">
+                  <div className="text-[9px] text-emerald-400 font-bold flex items-center gap-1 font-mono">
                     <CheckCircle2 className="w-3 h-3 text-emerald-400" /> FINAL INFERENCE REPLY:
                   </div>
-                  <div className="bg-zinc-900/60 p-3 rounded border border-zinc-800 text-zinc-300 leading-relaxed whitespace-pre-wrap select-text font-mono">
+                  <div className="bg-zinc-900/30 p-3 rounded border border-zinc-850 text-zinc-300 leading-relaxed whitespace-pre-wrap select-text font-mono">
                     {aiResponse}
                   </div>
                 </div>
@@ -1320,7 +1148,7 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
               )}
 
               {tokensEarned && (
-                <div className="text-[10px] text-zinc-500 text-right font-mono">
+                <div className="text-[9px] text-zinc-500 text-right font-mono">
                   Usage telemetry: <span className="text-zinc-300 font-bold font-mono">{tokensEarned} completion tokens</span> consumed and logged to ledger.
                 </div>
               )}
@@ -1329,120 +1157,12 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
         </div>
 
         {/* Right column: Resiliency Diagnostics and Chaos testing */}
-        <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-xl p-4 sm:p-5 space-y-4">
-          <h3 className="text-sm font-bold text-zinc-100 flex items-center gap-2 font-mono">
-            <Power className="w-4 h-4 text-red-500" /> Resiliency & Chaos Monkey
-          </h3>
-
-          <p className="text-xs text-zinc-400 leading-normal font-mono">
-            KILO isolates API failovers using Circuit Breakers. Test our resiliency framework by manually tripping individual service pipelines.
-          </p>
-
-          <div className="space-y-3">
-            {/* Groq Breaker */}
-            <div className="bg-zinc-950/80 border border-zinc-850 p-3 rounded-lg flex items-center justify-between gap-4">
-              <div className="space-y-0.5">
-                <span className="text-[10px] text-zinc-500 uppercase font-mono tracking-wider">Groq Breaker Status</span>
-                <div className="flex items-center gap-2">
-                  <span className={`w-2 h-2 rounded-full ${healthData?.circuitBreakers?.groqBreaker === 'OPEN' ? 'bg-red-500 animate-ping' : 'bg-green-500'}`} />
-                  <span className={`text-xs font-mono font-bold ${healthData?.circuitBreakers?.groqBreaker === 'OPEN' ? 'text-red-400' : 'text-green-400'}`}>
-                    {healthData?.circuitBreakers?.groqBreaker || 'CLOSED (ACTIVE)'}
-                  </span>
-                </div>
-              </div>
-
-              <div className="flex gap-1.5">
-                <button
-                  disabled={isTripping}
-                  onClick={() => toggleCircuitBreaker('trip')}
-                  className="bg-red-950/40 hover:bg-red-900/40 text-red-400 border border-red-500/20 text-[10px] font-bold px-2 py-1.5 rounded transition-all active:scale-95 disabled:opacity-40 font-mono"
-                >
-                  Trip (Chaos)
-                </button>
-                <button
-                  disabled={isTripping}
-                  onClick={() => toggleCircuitBreaker('reset')}
-                  className="bg-zinc-800 hover:bg-zinc-700 text-zinc-300 border border-zinc-700 text-[10px] font-bold px-2 py-1.5 rounded transition-all active:scale-95 disabled:opacity-40 font-mono"
-                >
-                  Reset
-                </button>
-              </div>
-            </div>
-
-            {/* DeepSeek Breaker */}
-            <div className="bg-zinc-950/80 border border-zinc-850 p-3 rounded-lg flex items-center justify-between gap-4">
-              <div className="space-y-0.5">
-                <span className="text-[10px] text-zinc-500 uppercase font-mono tracking-wider">DeepSeek Breaker Status</span>
-                <div className="flex items-center gap-2">
-                  <span className="w-2 h-2 rounded-full bg-green-500" />
-                  <span className="text-xs font-mono font-bold text-green-400">
-                    {healthData?.circuitBreakers?.deepseekBreaker || 'CLOSED (ACTIVE)'}
-                  </span>
-                </div>
-              </div>
-              <span className="text-[9px] uppercase font-mono text-zinc-600 font-bold">Auto Managed</span>
-            </div>
-
-            {/* System Deep Diagnostics Table */}
-            <div className="bg-zinc-950/60 rounded-lg p-3 border border-zinc-850 font-mono text-[10px] space-y-2">
-              <div className="text-[9px] font-bold text-zinc-500 uppercase pb-1 border-b border-zinc-850 flex justify-between">
-                <span>Deep Health Status</span>
-                <span className="text-green-400">ONLINE</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-zinc-500">Redis Slow DB (Gov):</span>
-                <span className={healthData?.redisSlow?.connected ? 'text-green-400 font-bold' : 'text-red-400 font-bold'}>
-                  {healthData?.redisSlow?.connected ? 'CONNECTED' : 'DISCONNECTED'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-zinc-500">Redis Fast DB (SSE):</span>
-                <span className={healthData?.redisFast?.connected ? 'text-green-400 font-bold' : 'text-red-400 font-bold'}>
-                  {healthData?.redisFast?.connected ? 'CONNECTED' : 'DISCONNECTED'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-zinc-500">Cache Janitor Lock:</span>
-                <span className="text-zinc-300">
-                  {healthData?.prunerLock?.locked ? 'LOCKED' : 'VACANT (OK)'}
-                </span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-zinc-500">Server Budget Spent:</span>
-                <span className="text-yellow-400 font-bold">
-                  ${healthData?.budget?.currentSpend?.toFixed(4) || '0.0001'} spent
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Terminal Real-time Job logs and Dispatch Trays */}
-      <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-xl p-4 sm:p-5">
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-zinc-800 pb-3 mb-4">
-          <div className="flex items-center gap-2">
-            <Layers className="w-4 h-4 text-yellow-500" />
-            <h3 className="text-sm font-bold text-zinc-100 font-mono">KILO Dispatch Logs & Real-Time Queue Activity</h3>
-          </div>
-          <span className="text-[10px] bg-zinc-950 px-2 py-1 rounded font-mono text-zinc-500 font-mono">
-            Active Listeners: WebSocket / Long-Polling
-          </span>
-        </div>
-
-        <div className="bg-zinc-950/80 rounded-lg border border-zinc-800 p-4 font-mono text-xs space-y-2 h-64 overflow-y-auto select-all leading-normal">
-          {dispatchLogs.map((log) => (
-            <div key={log.id} className="flex gap-3 items-start hover:bg-zinc-900/40 py-0.5 px-1 rounded transition-colors font-mono">
-              <span className="text-zinc-600 shrink-0 text-[10px] select-none font-mono">{log.time}</span>
-              <span className={`text-[11px] leading-relaxed select-text font-mono ${
-                log.type === 'success' ? 'text-emerald-400' :
-                log.type === 'warn' ? 'text-amber-400' :
-                log.type === 'err' ? 'text-red-400' : 'text-zinc-300'
-              }`}>
-                {log.msg}
-              </span>
-            </div>
-          ))}
+        <div>
+          <ResiliencyControls
+            healthData={healthData}
+            isTripping={isTripping}
+            toggleCircuitBreaker={toggleCircuitBreaker}
+          />
         </div>
       </div>
     </div>

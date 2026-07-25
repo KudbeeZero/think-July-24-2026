@@ -3,6 +3,7 @@ import { Activity, Cpu, HardDrive, Zap, RefreshCw, AlertTriangle, CheckCircle2, 
 import { RoutingVisualizer } from './RoutingVisualizer';
 import { AuditVaultCard } from './AuditVaultCard';
 import { ThinkStoragePlugin } from './ThinkStoragePlugin';
+import { PostgresDbConsole } from './PostgresDbConsole';
 import { ChaosMonkeyCard } from './ChaosMonkeyCard';
 
 export function ObservabilityView({ liveFeed = [] }: { liveFeed?: Array<{msg: string, time: string, type: string}> }) {
@@ -115,6 +116,9 @@ export function ObservabilityView({ liveFeed = [] }: { liveFeed?: Array<{msg: st
 
       {/* 3. Memory Vault & Think Storage Plugin */}
       <ThinkStoragePlugin />
+
+      {/* 3.5 Real-Time Postgres Database Console */}
+      <PostgresDbConsole />
 
       {/* 4. Chaos Resilience & Circuit Breaker Control */}
       <ChaosMonkeyCard />
