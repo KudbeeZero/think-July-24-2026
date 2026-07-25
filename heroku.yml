@@ -5,7 +5,7 @@ build:
     agent-toast: Dockerfile
     agent-refinery: Dockerfile
 run:
-  web: node dist/server.cjs
+  web: ./run.sh
   agent-mayor: node dist/server.cjs --agent=mayor
   agent-toast: node dist/server.cjs --agent=toast
   agent-refinery: node dist/server.cjs --agent=refinery
