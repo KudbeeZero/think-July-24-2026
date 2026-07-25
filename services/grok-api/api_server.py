@@ -8,15 +8,17 @@ from uvicorn      import run
 app = FastAPI()
 
 class ConversationRequest(BaseModel):
-    proxy: str
+    proxy: str = None
     message: str
     model: str = "grok-3-auto"
     extra_data: dict = None
 
 def format_proxy(proxy: str) -> str:
-    
+    if not proxy or not proxy.strip():
+        return None
+        
     if not proxy.startswith(("http://", "https://")):
-        proxy: str = "http://" + proxy
+        proxy = "http://" + proxy
     
     try:
         parsed: ParseResult = urlparse(proxy)
@@ -38,10 +40,10 @@ def format_proxy(proxy: str) -> str:
 
 @app.post("/ask")
 async def create_conversation(request: ConversationRequest):
-    if not request.proxy or not request.message:
-        raise HTTPException(status_code=400, detail="Proxy and message are required")
+    if not request.message:
+        raise HTTPException(status_code=400, detail="Message is required")
     
-    proxy = format_proxy(request.proxy)
+    proxy = format_proxy(request.proxy) if request.proxy else None
     
     try:
         answer: dict = Grok(request.model, proxy).start_convo(request.message, request.extra_data)

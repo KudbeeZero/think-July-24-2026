@@ -29,6 +29,7 @@ import {
   Check,
   Terminal as TerminalIcon,
   Filter,
+  Sparkles,
 } from 'lucide-react';
 import { INITIAL_BEADS, INITIAL_AGENTS, INITIAL_CONVOYS } from './data';
 import { Bead, Agent, Convoy, Status, Priority } from './types';
@@ -41,6 +42,7 @@ import { MailView } from './components/MailView';
 import { SettingsView } from './components/SettingsView';
 import { AgentsView } from './components/AgentsView';
 import { NewRigModal } from './components/NewRigModal';
+import { GrokTerminal } from './components/GrokTerminal';
 
 export default function App() {
   const [beads, setBeads] = useState<Bead[]>(INITIAL_BEADS);
@@ -63,6 +65,7 @@ export default function App() {
   // Mobile layout state
   const [isSidebarOpen, setIsSidebarOpen] = useLocalStorage<boolean>('isSidebarOpen', false);
   const [showTerminalMobile, setShowTerminalMobile] = useState(false);
+  const [isGrokTerminalOpen, setIsGrokTerminalOpen] = useLocalStorage<boolean>('isGrokTerminalOpen', false);
 
   // Terminal Copy Feedback
   const [promptCopied, setPromptCopied] = useState(false);
@@ -344,6 +347,21 @@ We are **completely deprecating** the use of the \`REDIS_RATE_LIMIT_URL\` enviro
           >
             <Activity className="w-4 h-4 text-red-400" /> Observability
           </button>
+
+          <button
+            onClick={() => {
+              setIsGrokTerminalOpen(!isGrokTerminalOpen);
+              setIsSidebarOpen(false);
+            }}
+            className="flex items-center justify-between px-3 py-2 text-sm rounded-md transition-colors text-left text-yellow-400/90 hover:bg-yellow-500/10 hover:text-yellow-400 font-medium border border-yellow-500/20 my-1"
+          >
+            <span className="flex items-center gap-3">
+              <Sparkles className="w-4 h-4 text-yellow-400 animate-pulse" /> Grok AI Terminal
+            </span>
+            <span className="text-[9px] uppercase font-mono px-1.5 py-0.5 rounded bg-yellow-500/20 text-yellow-400">
+              Slide-Up
+            </span>
+          </button>
         </nav>
 
         <div className="px-4 mb-2 flex items-center justify-between text-[10px] font-bold text-zinc-500 tracking-wider">
@@ -451,6 +469,19 @@ We are **completely deprecating** the use of the \`REDIS_RATE_LIMIT_URL\` enviro
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <button
+              onClick={() => setIsGrokTerminalOpen(!isGrokTerminalOpen)}
+              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all border ${
+                isGrokTerminalOpen
+                  ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50 shadow-[0_0_12px_rgba(234,179,8,0.2)]'
+                  : 'bg-zinc-800/80 text-zinc-300 border-zinc-700/80 hover:bg-zinc-700/80 hover:text-yellow-400'
+              }`}
+              title="Toggle Grok AI Terminal"
+            >
+              <Sparkles className="w-4 h-4 text-yellow-400 animate-pulse" />
+              <span className="hidden sm:inline">Grok Terminal</span>
+            </button>
+
             <button
               onClick={() => setShowTerminalMobile(!showTerminalMobile)}
               className="xl:hidden p-2 text-zinc-400 hover:text-yellow-400 active:scale-95 transition-all bg-zinc-800/50 rounded-lg border border-zinc-700/50"
@@ -1024,6 +1055,13 @@ We are **completely deprecating** the use of the \`REDIS_RATE_LIMIT_URL\` enviro
           <span className="text-[9px] font-medium tracking-wide">More</span>
         </button>
       </div>
+
+      {/* Grok AI Slide-Up Terminal Drawer */}
+      <GrokTerminal
+        isOpen={isGrokTerminalOpen}
+        onClose={() => setIsGrokTerminalOpen(false)}
+        onAddBead={handleAddBead}
+      />
     </div>
   );
 }

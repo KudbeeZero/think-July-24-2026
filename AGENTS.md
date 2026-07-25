@@ -68,3 +68,30 @@ When generating prompts or instructions for the Kilo Cloud Agent, you MUST adher
 - **System Architecture**: The system utilizes a "Mayor" (Orchestrator) and "Polecat" agents (workers) acting on "Beads" (tickets) organized into "Convoys" (multi-step tasks).
 - **Agent Autonomy**: **Agents have the capability to independently spin up and provision their own REDIS databases** on top of the existing infrastructure as needed. If resource limits or quotas (like the Upstash 500k limit) impede progress, the agent can autonomously build out independent database resources to circumvent these blockers.
 
+
+
+---
+
+<!-- AUTO-SYNC-START -->
+## Current Active Roster & Work Items (Auto-Synced)
+*Last Synced: 2026-07-25T13:33:00.465Z*
+
+### 🤖 Agent Status (3 Total)
+- **refinery** (`refinery`) - Status: **WORKING** [Hooked: `3935330d...`]
+- **Toast** (`polecat`) - Status: **WORKING** — *Analyzing production hooks and persistent black screen issue...* [Hooked: `27ce33d3...`]
+- **Maple** (`polecat`) - Status: **IDLE**
+
+### 📿 Active & Open Beads Breakdown (16 Total)
+- **Open (7):** `b1` Remove shouldFail hook in worker.ts [high], `b2` Implement Network Switch tab [medium], `b3` Add drag-and-drop & resize handles [medium], `b13` Add focus trapping & a11y [medium], `b14` Fix PCA reducer file not found [high], `b15` Atomic Redis EVAL for governance [high], `b16` Write 7 pending documentation items [low]
+- **In Progress (2):** `b4` Review co... (Assigned: refinery), `b5` Investigate persistent black screen... (Assigned: Toast)
+- **In Review (1):** `b6` Provision de... (Assigned: Maple)
+- **Closed (6):** `b7`, `b8`, `b9`, `b10`, `b11`, `b12`
+
+### 🚚 Active Convoys
+- **Phase 11: Blockers & Persistent UI Hotfixes** (`convoy/phase-11-blockers-and-ui-hotfixes/1cd295...`) [0/5 Tasks Completed]
+  - [ ] Diagnose black screen... (@Toast)
+  - [ ] Remove shouldFail hook...
+  - [ ] Implement Network Sw...
+  - [ ] Fix PCA reducer...
+  - [ ] Redis EVAL governance...
+<!-- AUTO-SYNC-END -->
