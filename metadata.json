@@ -1,0 +1,6 @@
+{
+  "name": "Kudbee OS Agent Engine",
+  "description": "Sovereignty-First Kudbee Agent Engine with Control Tower dashboard, Neon Postgres + pgvector memory, Upstash Redis telemetry, and trajectory think-token minting.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
