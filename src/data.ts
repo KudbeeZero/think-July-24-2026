@@ -27,9 +27,79 @@ export const INITIAL_BEADS: Bead[] = [
 ];
 
 export const INITIAL_AGENTS: Agent[] = [
-  { id: 'a1', name: 'refinery', role: 'refinery', status: 'working', hooked: '3935330d...', lastActive: 'less than a minute ago', icon: 'shield' },
-  { id: 'a2', name: 'Toast', role: 'polecat', status: 'working', hooked: '27ce33d3...', lastActive: 'less than a minute ago', currentAction: 'Analyzing production hooks and persistent black screen issue...', icon: 'robot' },
-  { id: 'a3', name: 'Maple', role: 'polecat', status: 'idle', lastActive: '12 minutes ago', icon: 'robot' }
+  { 
+    id: 'a1', 
+    name: 'refinery', 
+    role: 'refinery', 
+    status: 'working', 
+    hooked: '3935330d...', 
+    lastActive: 'less than a minute ago', 
+    icon: 'shield',
+    model: 'deepseek-reasoner',
+    reasoningTokensSpent: 48920,
+    promptTokensSpent: 128400,
+    completionTokensSpent: 32100,
+    totalTasksCompleted: 18,
+    temperature: 0.2
+  },
+  { 
+    id: 'a2', 
+    name: 'Toast', 
+    role: 'polecat', 
+    status: 'working', 
+    hooked: '27ce33d3...', 
+    lastActive: 'less than a minute ago', 
+    currentAction: 'Analyzing production hooks and persistent black screen issue...', 
+    icon: 'robot',
+    model: 'grok-3-fast',
+    reasoningTokensSpent: 62410,
+    promptTokensSpent: 184500,
+    completionTokensSpent: 45200,
+    totalTasksCompleted: 24,
+    temperature: 0.3
+  },
+  { 
+    id: 'a3', 
+    name: 'Maple', 
+    role: 'polecat', 
+    status: 'idle', 
+    lastActive: '12 minutes ago', 
+    icon: 'robot',
+    model: 'deepseek-reasoner',
+    reasoningTokensSpent: 31520,
+    promptTokensSpent: 89100,
+    completionTokensSpent: 21400,
+    totalTasksCompleted: 12,
+    temperature: 0.1
+  },
+  { 
+    id: 'a4', 
+    name: 'Shadow', 
+    role: 'polecat', 
+    status: 'idle', 
+    lastActive: '1 hour ago', 
+    icon: 'robot',
+    model: 'grok-3-fast',
+    reasoningTokensSpent: 15800,
+    promptTokensSpent: 45000,
+    completionTokensSpent: 11200,
+    totalTasksCompleted: 8,
+    temperature: 0.2
+  },
+  { 
+    id: 'a5', 
+    name: 'Clover', 
+    role: 'polecat', 
+    status: 'idle', 
+    lastActive: '2 hours ago', 
+    icon: 'robot',
+    model: 'deepseek-reasoner',
+    reasoningTokensSpent: 22100,
+    promptTokensSpent: 61000,
+    completionTokensSpent: 15400,
+    totalTasksCompleted: 9,
+    temperature: 0.25
+  }
 ];
 
 export const INITIAL_CONVOYS: Convoy[] = [

@@ -1,9 +1,12 @@
 import React, { useState } from 'react';
-import { Activity, Cpu, HardDrive, Zap, RefreshCw, AlertTriangle, CheckCircle2, Database, ShieldCheck } from 'lucide-react';
+import { Activity, Cpu, HardDrive, Zap, RefreshCw, AlertTriangle, CheckCircle2, Database, ShieldCheck, Network, Lock, Flame } from 'lucide-react';
+import { RoutingVisualizer } from './RoutingVisualizer';
+import { AuditVaultCard } from './AuditVaultCard';
+import { ThinkStoragePlugin } from './ThinkStoragePlugin';
+import { ChaosMonkeyCard } from './ChaosMonkeyCard';
 
 export function ObservabilityView({ liveFeed = [] }: { liveFeed?: Array<{msg: string, time: string, type: string}> }) {
   const [timeRange, setTimeRange] = useState('24h');
-  const [filterType, setFilterType] = useState('all');
 
   const defaultTelemetryEvents = [
     { id: '1', time: '01:38:12', type: 'INFO', source: 'services/agents/worker.ts', message: 'Worker loop cycle executed. Memory vault similarity score: 0.94' },
@@ -15,7 +18,6 @@ export function ObservabilityView({ liveFeed = [] }: { liveFeed?: Array<{msg: st
 
   const displayFeed = liveFeed.length > 0 
     ? liveFeed.map((evt, idx) => {
-        // Parse the raw SSE message like "[System] Agent Mayor..."
         const match = evt.msg.match(/^\[(.*?)\] (.*)$/);
         const source = match ? match[1] : 'System';
         const message = match ? match[2] : evt.msg;
@@ -35,10 +37,10 @@ export function ObservabilityView({ liveFeed = [] }: { liveFeed?: Array<{msg: st
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-800">
         <div>
           <h2 className="text-lg font-semibold text-zinc-100 flex items-center gap-2">
-            <Activity className="w-5 h-5 text-yellow-500" /> System Observability & Telemetry
+            <Activity className="w-5 h-5 text-yellow-500" /> KUD-THINK System Observability & Telemetry
           </h2>
           <p className="text-xs text-zinc-400 mt-1">
-            Real-time worker polling loops, memory vault vectors, and Redis rate-limiting telemetry
+            Suboxone Effect Canonical State, BraiNCA 7-Node Trajectories & Spheroid BlockTrain Ledger
           </p>
         </div>
 
@@ -46,50 +48,50 @@ export function ObservabilityView({ liveFeed = [] }: { liveFeed?: Array<{msg: st
           <select
             value={timeRange}
             onChange={(e) => setTimeRange(e.target.value)}
-            className="bg-[#161b22] border border-zinc-700/60 rounded-lg px-3 py-1.5 text-xs text-zinc-200 focus:outline-none"
+            className="bg-[#161b22] border border-zinc-700/60 rounded-lg px-3 py-1.5 text-xs text-zinc-200 focus:outline-none font-mono"
           >
             <option value="1h">Last 1 Hour</option>
             <option value="24h">Last 24 Hours</option>
             <option value="7d">Last 7 Days</option>
           </select>
-          <button className="flex items-center gap-1.5 px-3 py-1.5 bg-[#161b22] hover:bg-zinc-800 border border-zinc-700/60 rounded-lg text-xs font-medium text-zinc-300 transition-colors">
+          <button className="flex items-center gap-1.5 px-3 py-1.5 bg-[#161b22] hover:bg-zinc-800 border border-zinc-700/60 rounded-lg text-xs font-medium text-zinc-300 transition-colors font-mono">
             <RefreshCw className="w-3.5 h-3.5 text-yellow-500" /> Refresh Telemetry
           </button>
         </div>
       </div>
 
       {/* Metrics Row */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 font-mono">
         <div className="bg-[#161b22] border border-zinc-800/80 rounded-xl p-4">
           <div className="flex items-center justify-between text-zinc-400 text-xs mb-2">
-            <span className="font-semibold uppercase tracking-wider">Worker Loop Rate</span>
-            <Zap className="w-4 h-4 text-yellow-500" />
-          </div>
-          <div className="text-2xl font-bold text-zinc-100">120 req/min</div>
-          <div className="text-[11px] text-green-400 mt-1 flex items-center gap-1">
-            <CheckCircle2 className="w-3 h-3" /> Exponential backoff stable
-          </div>
-        </div>
-
-        <div className="bg-[#161b22] border border-zinc-800/80 rounded-xl p-4">
-          <div className="flex items-center justify-between text-zinc-400 text-xs mb-2">
-            <span className="font-semibold uppercase tracking-wider">Rate Limit Quota</span>
+            <span className="font-semibold uppercase tracking-wider">Dual-Redis Workload</span>
             <Database className="w-4 h-4 text-purple-400" />
           </div>
-          <div className="text-2xl font-bold text-zinc-100">In-Memory Fallback</div>
-          <div className="text-[11px] text-zinc-500 mt-1">
-            REDIS_RATE_LIMIT_URL deprecated
+          <div className="text-2xl font-bold text-zinc-100">Suboxone Model</div>
+          <div className="text-[11px] text-purple-400 mt-1 flex items-center gap-1">
+            <CheckCircle2 className="w-3 h-3" /> Fast & Slow DB Segregated
           </div>
         </div>
 
         <div className="bg-[#161b22] border border-zinc-800/80 rounded-xl p-4">
           <div className="flex items-center justify-between text-zinc-400 text-xs mb-2">
-            <span className="font-semibold uppercase tracking-wider">Memory Vault Similarity</span>
+            <span className="font-semibold uppercase tracking-wider">7-Node Matrix</span>
+            <Network className="w-4 h-4 text-cyan-400" />
+          </div>
+          <div className="text-2xl font-bold text-zinc-100">BraiNCA Active</div>
+          <div className="text-[11px] text-cyan-400 mt-1">
+            Continuous-Time CfC Routing
+          </div>
+        </div>
+
+        <div className="bg-[#161b22] border border-zinc-800/80 rounded-xl p-4">
+          <div className="flex items-center justify-between text-zinc-400 text-xs mb-2">
+            <span className="font-semibold uppercase tracking-wider">Sentinel Ed25519</span>
             <ShieldCheck className="w-4 h-4 text-emerald-400" />
           </div>
-          <div className="text-2xl font-bold text-zinc-100">98.2% Accuracy</div>
+          <div className="text-2xl font-bold text-emerald-400">PROVEN</div>
           <div className="text-[11px] text-emerald-400 mt-1">
-            21 vector embeddings active
+            BlockTrain Hash-Chain Anchors
           </div>
         </div>
 
@@ -98,41 +100,24 @@ export function ObservabilityView({ liveFeed = [] }: { liveFeed?: Array<{msg: st
             <span className="font-semibold uppercase tracking-wider">System Health</span>
             <Activity className="w-4 h-4 text-green-400" />
           </div>
-          <div className="text-2xl font-bold text-green-400">OPERATIONAL</div>
+          <div className="text-2xl font-bold text-green-400">HEALTHY</div>
           <div className="text-[11px] text-zinc-500 mt-1">
-            All 12 packages clean
+            Deep Check & Chaos Ready
           </div>
         </div>
       </div>
 
-      {/* Visual Chart Placeholder */}
-      <div className="bg-[#161b22] border border-zinc-800/80 rounded-xl p-5">
-        <h3 className="text-sm font-semibold text-zinc-200 mb-4 flex items-center gap-2">
-          <Activity className="w-4 h-4 text-yellow-500" /> 24-Hour Event Spike Analysis
-        </h3>
-        <div className="h-40 w-full flex items-end gap-2 pt-6 px-2 border-b border-zinc-800">
-          {[12, 18, 25, 14, 8, 30, 45, 90, 200, 150, 80, 60, 40, 30, 25, 40, 70, 110, 85, 50, 35, 20, 15, 10].map(
-            (val, idx) => (
-              <div key={idx} className="flex-1 flex flex-col items-center gap-1 group relative">
-                <div
-                  className="w-full bg-yellow-500/30 hover:bg-yellow-400 border-t-2 border-yellow-500 transition-all rounded-t-sm"
-                  style={{ height: `${(val / 200) * 100}%` }}
-                />
-                <span className="opacity-0 group-hover:opacity-100 absolute -top-7 bg-black text-[9px] text-yellow-400 px-1.5 py-0.5 rounded font-mono z-10 whitespace-nowrap border border-zinc-700">
-                  {val} evts
-                </span>
-              </div>
-            )
-          )}
-        </div>
-        <div className="flex justify-between text-[10px] text-zinc-500 mt-2 font-mono">
-          <span>00:00</span>
-          <span>06:00</span>
-          <span>12:00</span>
-          <span>18:00</span>
-          <span>Now</span>
-        </div>
-      </div>
+      {/* 1. BraiNCA 7-Node Routing Visualizer */}
+      <RoutingVisualizer />
+
+      {/* 2. Spheroid BlockTrain Ledger & Sentinel Provenance */}
+      <AuditVaultCard />
+
+      {/* 3. Memory Vault & Think Storage Plugin */}
+      <ThinkStoragePlugin />
+
+      {/* 4. Chaos Resilience & Circuit Breaker Control */}
+      <ChaosMonkeyCard />
 
       {/* Telemetry Stream Log */}
       <div className="bg-[#161b22] border border-zinc-800/80 rounded-xl overflow-hidden">
@@ -140,7 +125,7 @@ export function ObservabilityView({ liveFeed = [] }: { liveFeed?: Array<{msg: st
           <h3 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider font-mono">
             Live Telemetry Logs
           </h3>
-          <span className="text-[10px] text-zinc-500 font-mono">5 events captured</span>
+          <span className="text-[10px] text-zinc-500 font-mono">{displayFeed.length} events captured</span>
         </div>
         <div className="divide-y divide-zinc-800/60 font-mono text-xs">
           {displayFeed.map((evt) => (

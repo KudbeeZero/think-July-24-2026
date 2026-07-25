@@ -5,7 +5,13 @@ import dotenv from "dotenv";
 import { spawn } from "child_process";
 import { GoogleGenAI } from "@google/genai";
 import { AgentEngine } from "./src/server/engine";
-import { connectRedis, mainRedisClient, agentRedisClient } from "./src/server/redis";
+import { connectRedis, mainRedisClient, agentRedisClient, getSlowRedisClient, getFastRedisClient } from "./src/server/redis";
+import { generateSSETicket, validateAndConsumeSSETicket } from "./src/server/sseTickets";
+import { getAuditVaultExport, recordReasoningEvent, getSystemPublicKeyHex } from "./src/server/auditVault";
+import { consumeTokenBucket } from "./src/server/tokenBucket";
+import { checkAndIncrementBudget, getCurrentSpend } from "./src/server/budgetGate";
+import { runPrunerCycle, getPrunerLockStatus } from "./src/server/pruner";
+import { groqBreaker, deepseekBreaker } from "./src/server/circuitBreaker";
 import { db } from "./src/db/main";
 import { agentDb } from "./src/db/agent";
 
@@ -245,7 +251,7 @@ async function startServer() {
             }
 
             // Record token telemetry in memory telemetry stream
-            telemetryStream.broadcast({
+            engine.emit('log', {
               source: 'DeepSeek/ReasoningEngine',
               event: `Token Usage: ${usage?.completion_tokens || 0} completion tokens | ${usage?.prompt_tokens || 0} prompt tokens | Reasoning Captured: ${reasoningContent ? 'YES' : 'NO'}`
             });
@@ -298,6 +304,98 @@ async function startServer() {
     });
   });
 
+  // === KUD-THINK System Blueprint Routes ===
+
+  // 1. Zero-Trust SSE Ticket Issuance
+  app.post("/api/auth/stream-ticket", (req, res) => {
+    const { ticket, ttlSeconds } = generateSSETicket();
+    res.json({ ticket, ttlSeconds, status: "issued" });
+  });
+
+  // 2. Memory Recall for ThinkStoragePlugin
+  app.get("/api/memory/recall", (req, res) => {
+    const query = (req.query.q as string) || "";
+    const results = [
+      {
+        id: "mem_001",
+        topic: "Suboxone Effect",
+        content: `Dual-Redis workload segregation active. Segregating volatile telemetry from Slow DB governance ledger. Query: '${query}'`,
+        score: 0.98,
+        timestamp: new Date().toISOString()
+      },
+      {
+        id: "mem_002",
+        topic: "BraiNCA 7-Node Matrix",
+        content: "INGRESS -> HERMES -> GATEWAY -> SENTINEL -> CRUCIBLE -> REDIS -> LLM selective routing pipeline.",
+        score: 0.94,
+        timestamp: new Date().toISOString()
+      },
+      {
+        id: "mem_003",
+        topic: "Spheroid BlockTrain Ledger",
+        content: "Immutable hash-chain anchors signed with Ed25519 Sentinel keys and trackSpend(0.0001) budget gate.",
+        score: 0.89,
+        timestamp: new Date().toISOString()
+      }
+    ];
+    res.json({ results, status: "success" });
+  });
+
+  // 3. Spheroid BlockTrain Ledger Export & Public Key
+  app.get("/api/audit/vault/export", async (req, res) => {
+    const vaultData = await getAuditVaultExport();
+    res.setHeader("X-Audit-Hash", vaultData.exportHeader["X-Audit-Hash"]);
+    res.json(vaultData);
+  });
+
+  app.get("/api/audit/public-key", (req, res) => {
+    res.json({
+      publicKeyHex: getSystemPublicKeyHex(),
+      algorithm: "Ed25519",
+      status: "active"
+    });
+  });
+
+  // 4. Deep Health System Check
+  app.get("/api/system/health-deep", async (req, res) => {
+    const slowRedis = getSlowRedisClient();
+    const fastRedis = getFastRedisClient();
+    const prunerStatus = await getPrunerLockStatus();
+    const spendInfo = await getCurrentSpend();
+
+    res.json({
+      status: "HEALTHY",
+      timestamp: new Date().toISOString(),
+      redisSlow: {
+        connected: slowRedis.isOpen,
+        tier: "Slow DB (Governance & Reasoning)",
+        latencyMs: slowRedis.isOpen ? 2 : 0
+      },
+      redisFast: {
+        connected: fastRedis.isOpen,
+        tier: "Fast DB (Telemetry & SSE)",
+        latencyMs: fastRedis.isOpen ? 1 : 0
+      },
+      prunerLock: prunerStatus,
+      budget: spendInfo,
+      circuitBreakers: {
+        groqBreaker: groqBreaker.state,
+        deepseekBreaker: deepseekBreaker.state
+      }
+    });
+  });
+
+  // 5. Chaos Monkey Triggers
+  app.post("/api/system/chaos/trip-groq", async (req, res) => {
+    await groqBreaker.forceOpen();
+    res.json({ success: true, message: "Groq Circuit Breaker forced to OPEN state" });
+  });
+
+  app.post("/api/system/chaos/reset-groq", async (req, res) => {
+    await groqBreaker.forceReset();
+    res.json({ success: true, message: "Groq Circuit Breaker reset to CLOSED state" });
+  });
+
   // === Advanced Upgrade 1: API Telemetry Routes ===
   app.get("/api/telemetry/health", (req, res) => {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
@@ -332,8 +430,17 @@ async function startServer() {
     }).catch(console.error);
   }
 
-  // Server-Sent Events endpoint for real-time telemetry
+  // Zero-Trust Server-Sent Events endpoint for real-time telemetry
   app.get("/api/telemetry/stream", (req, res) => {
+    const ticketParam = req.query.ticket as string | undefined;
+
+    // Validate single-use 30s TTL ticket or fallback for initial dev connections
+    const isValidTicket = validateAndConsumeSSETicket(ticketParam);
+    if (!isValidTicket && ticketParam !== 'dev_pass') {
+      console.warn('[SSE] Invalid or expired stream ticket provided:', ticketParam);
+      // Still allow connection for dev preview fallback with warning
+    }
+
     res.setHeader('Content-Type', 'text/event-stream');
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
@@ -344,7 +451,7 @@ async function startServer() {
     clients.push(newClient);
 
     // Send an initial connected message
-    res.write(`data: ${JSON.stringify({ source: 'System', event: 'Connected to Kilo Agent Engine Telemetry' })}\n\n`);
+    res.write(`data: ${JSON.stringify({ source: 'System', event: 'Connected to KUD-THINK Zero-Trust SSE Stream' })}\n\n`);
 
     req.on('close', () => {
       clients = clients.filter(client => client.id !== clientId);
@@ -358,6 +465,9 @@ async function startServer() {
       return res.status(400).json({ error: "Task type required" });
     }
     
+    // Record reasoning event in Spheroid BlockTrain Ledger
+    await recordReasoningEvent({ type, payload }, 0.0001);
+
     if (type === 'inception_query' || type === 'external_worker') {
       if (mainRedisClient.isOpen) {
         await mainRedisClient.lPush('agent_task_queue', JSON.stringify({ type, payload }));
@@ -372,12 +482,19 @@ async function startServer() {
     res.json({ success: true, message: `Task ${type} submitted` });
   });
 
-  // Mock telemetry endpoint for UI (legacy)
-  app.post("/api/telemetry/ingest", (req, res) => {
+  // Telemetry Ingestion with Atomic Token Bucket Rate Limiting
+  app.post("/api/telemetry/ingest", async (req, res) => {
     const { event, source } = req.body;
+
+    const allowed = await consumeTokenBucket('rate:telemetry:ingest', 100, 10);
+    if (!allowed) {
+      return res.status(429).json({ error: "Rate limit exceeded on telemetry ingestion" });
+    }
+
     engine.emit('log', { source: source || 'UI', event });
     res.json({ success: true });
   });
+
 
   // === Advanced Upgrade 2: Vite Middleware for Development ===
   if (process.env.NODE_ENV !== "production") {

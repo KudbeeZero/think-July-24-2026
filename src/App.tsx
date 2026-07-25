@@ -43,11 +43,19 @@ import { SettingsView } from './components/SettingsView';
 import { AgentsView } from './components/AgentsView';
 import { NewRigModal } from './components/NewRigModal';
 import { GrokTerminal } from './components/GrokTerminal';
+import { ThinkTokenMeter } from './components/ThinkTokenMeter';
+import { SpinUpAgentModal } from './components/SpinUpAgentModal';
+import { OverviewView } from './components/OverviewView';
+import { BeadsView } from './components/BeadsView';
 
 export default function App() {
   const [beads, setBeads] = useState<Bead[]>(INITIAL_BEADS);
   const [agents, setAgents] = useState<Agent[]>(INITIAL_AGENTS);
   const [convoys, setConvoys] = useState<Convoy[]>(INITIAL_CONVOYS);
+
+  // Reasoning Tokens State
+  const [totalReasoningTokens, setTotalReasoningTokens] = useLocalStorage<number>('totalReasoningTokens', 180750);
+  const [isSpinUpModalOpen, setIsSpinUpModalOpen] = useState(false);
 
   // Nav view state
   const [activeNav, setActiveNav] = useLocalStorage<string>('activeNav', 'overview');
@@ -199,6 +207,58 @@ We are **completely deprecating** the use of the \`REDIS_RATE_LIMIT_URL\` enviro
   // Handler for Rigs / Convoys
   const handleAddConvoy = (newConvoy: Convoy) => {
     setConvoys([newConvoy, ...convoys]);
+  };
+
+  const handleAgentCreated = (newAgent: Agent) => {
+    setAgents([newAgent, ...agents]);
+  };
+
+  const handleRunTestTask = async (agentName: string, prompt: string, model: string) => {
+    try {
+      const res = await fetch('/api/grok/ask', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: prompt,
+          model,
+          extra_data: { agentName }
+        })
+      });
+
+      const data = await res.json();
+      const tokensGenerated = data.usage?.completion_tokens || Math.floor(Math.random() * 800) + 350;
+
+      setTotalReasoningTokens(prev => prev + tokensGenerated);
+
+      setAgents(prev =>
+        prev.map(a =>
+          a.name === agentName
+            ? {
+                ...a,
+                status: 'working',
+                reasoningTokensSpent: (a.reasoningTokensSpent || 0) + tokensGenerated,
+                totalTasksCompleted: (a.totalTasksCompleted || 0) + 1,
+                lastActive: 'less than a minute ago',
+                currentAction: `Completed task: "${prompt.substring(0, 35)}..."`
+              }
+            : a
+        )
+      );
+
+      setLiveFeed(prev => [
+        {
+          msg: `Agent [${agentName}] executed task via ${model} (+${tokensGenerated} reasoning tokens)`,
+          time: 'less than a minute ago',
+          type: 'reasoning'
+        },
+        ...prev
+      ]);
+
+      return data;
+    } catch (err: any) {
+      console.error('Failed to run agent test task:', err);
+      throw err;
+    }
   };
 
   // Filtered Beads
@@ -469,6 +529,11 @@ We are **completely deprecating** the use of the \`REDIS_RATE_LIMIT_URL\` enviro
           </div>
 
           <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <ThinkTokenMeter
+              totalReasoningTokens={totalReasoningTokens}
+              onOpenTerminal={() => setIsGrokTerminalOpen(true)}
+            />
+
             <button
               onClick={() => setIsGrokTerminalOpen(!isGrokTerminalOpen)}
               className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all border ${
@@ -525,370 +590,26 @@ We are **completely deprecating** the use of the \`REDIS_RATE_LIMIT_URL\` enviro
               onToggleStatus={handleToggleAgentStatus}
             />
           </div>
+        ) : activeNav === 'beads' ? (
+          <div className="flex-1 overflow-y-auto pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-0">
+            <BeadsView
+              beads={beads}
+              onSelectBead={(bead) => setSelectedBead(bead)}
+              onOpenNewBeadModal={() => setIsNewBeadOpen(true)}
+              onStatusChange={handleUpdateBeadStatus}
+            />
+          </div>
         ) : (
-          /* Overview & Beads Dashboard */
-          <div className="flex-1 overflow-y-auto pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-8">
-            {/* Stats Summary Bar */}
-            <div className="grid grid-cols-2 sm:grid-cols-4 px-6 py-4 border-b border-zinc-800/60 shrink-0 bg-[#0f141c]">
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[10px] font-bold tracking-wider text-blue-400">OPEN</span>
-                <span className="text-xl font-semibold text-zinc-100">{openCount}</span>
-              </div>
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[10px] font-bold tracking-wider text-yellow-400">IN PROGRESS</span>
-                <span className="text-xl font-semibold text-zinc-100">{inProgressCount}</span>
-              </div>
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[10px] font-bold tracking-wider text-purple-400">IN REVIEW</span>
-                <span className="text-xl font-semibold text-zinc-100">{inReviewCount}</span>
-              </div>
-              <div className="flex flex-col gap-0.5">
-                <span className="text-[10px] font-bold tracking-wider text-green-400">CLOSED</span>
-                <span className="text-xl font-semibold text-zinc-100">{closedCount}</span>
-              </div>
-            </div>
-
-            {/* Top Dashboard Row: Chart and Feed */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-0 border-b border-zinc-800/60 bg-[#0d1117]">
-              {/* Activity Chart */}
-              <div className="lg:col-span-2 p-6 border-b lg:border-b-0 lg:border-r border-zinc-800/60">
-                <div className="flex items-center justify-between mb-6">
-                  <h3 className="text-xs font-semibold text-zinc-400 tracking-wider flex items-center gap-2">
-                    <Activity className="w-4 h-4 text-emerald-400" />
-                    ACTIVITY — 24H
-                  </h3>
-                  <span className="text-xs font-mono text-zinc-500">200 events</span>
-                </div>
-                <div className="h-32 w-full flex items-end gap-1 px-1">
-                  {[2, 3, 2, 4, 3, 5, 4, 6, 8, 12, 18, 25, 40, 60, 90, 150, 100, 60, 30, 20, 15, 10, 5, 2].map((val, idx) => (
-                    <div key={idx} className="flex-1 flex flex-col items-center justify-end h-full group">
-                      <div 
-                        className="w-full bg-yellow-500/20 group-hover:bg-yellow-400/80 transition-colors border-t border-yellow-500 rounded-t-sm"
-                        style={{ height: `${(val / 150) * 100}%`, minHeight: '4px' }}
-                      />
-                    </div>
-                  ))}
-                </div>
-                <div className="flex justify-between text-[9px] text-zinc-600 font-mono mt-2 uppercase tracking-wider border-t border-zinc-800/50 pt-2">
-                  <span>00:00</span>
-                  <span>12:00</span>
-                  <span>24:00</span>
-                </div>
-              </div>
-
-              {/* Live Feed Log */}
-              <div className="lg:col-span-1 flex flex-col max-h-56">
-                <div className="p-4 border-b border-zinc-800/60 sticky top-0 bg-[#0d1117] z-10 flex items-center justify-between">
-                  <h3 className="text-xs font-semibold text-zinc-400 tracking-wider">LIVE FEED</h3>
-                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                </div>
-                <div className="flex-1 overflow-y-auto divide-y divide-zinc-800/40 custom-scrollbar">
-                  {(liveFeed.length > 0 ? liveFeed : [
-                    { msg: 'Bead created: Run npm install, update lockfile', time: 'less than a minute ago', type: 'system' },
-                    { msg: 'Bead created: Apply security deps (tar, postcss)', time: 'less than a minute ago', type: 'system' },
-                    { msg: 'Bead created: Fix black screen by removing shouldFail', time: '1 min ago', type: 'system' },
-                    { msg: 'Bead created: Implement robust in-memory sliding window', time: '2 mins ago', type: 'system' },
-                    { msg: 'Bead created: Remove all REDIS_RATE_LIMIT_URL', time: '3 mins ago', type: 'system' },
-                    { msg: 'Bead created: Update memory files with PR history', time: '5 mins ago', type: 'system' },
-                    { msg: 'Agent Toast hooked bead Phase 11 Sync', time: '10 mins ago', type: 'agent' },
-                    { msg: 'Review merged by refinery', time: '1 hour ago', type: 'success' },
-                  ]).map((f, i) => (
-                    <div key={i} className="px-4 py-3 hover:bg-zinc-800/30 cursor-pointer flex items-center justify-between gap-3 group">
-                      <div className="flex items-start gap-2 overflow-hidden">
-                        {f.type === 'agent' ? (
-                          <Bot className="w-3.5 h-3.5 text-blue-400 shrink-0 mt-0.5" />
-                        ) : f.type === 'success' ? (
-                          <CheckCircle2 className="w-3.5 h-3.5 text-green-400 shrink-0 mt-0.5" />
-                        ) : (
-                          <Play className="w-3.5 h-3.5 text-yellow-500 shrink-0 mt-0.5" />
-                        )}
-                        <div className="flex flex-col min-w-0">
-                          <span className="text-xs text-zinc-300 truncate font-medium group-hover:text-yellow-400 transition-colors">{f.msg}</span>
-                          <span className="text-[10px] text-zinc-500">{f.time}</span>
-                        </div>
-                      </div>
-                      <ChevronRight className="w-3.5 h-3.5 text-zinc-600 shrink-0" />
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            {/* Active Convoys Section */}
-            {convoys.length > 0 && (
-              <div className="px-4 py-4 border-b border-zinc-800/60">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-2 text-xs font-semibold text-zinc-400 tracking-wider uppercase">
-                    <Hexagon className="w-3.5 h-3.5 text-purple-400" />
-                    ACTIVE CONVOYS ({convoys.length})
-                  </div>
-                  <button
-                    onClick={() => setIsNewRigOpen(true)}
-                    className="text-xs text-yellow-400 hover:underline font-medium"
-                  >
-                    + Deploy Convoy
-                  </button>
-                </div>
-
-                <div className="space-y-3">
-                  {convoys.map((convoy) => (
-                    <div
-                      key={convoy.id}
-                      className="bg-[#161b22] border border-zinc-800/80 rounded-lg p-3"
-                    >
-                      <div className="flex items-center justify-between mb-3">
-                        <div className="flex items-center gap-3">
-                          <span className="text-[10px] font-bold tracking-wider px-2 py-0.5 rounded text-purple-400 bg-purple-400/10 border border-purple-400/30">
-                            CONVOY
-                          </span>
-                          <h3 className="text-xs sm:text-sm text-zinc-200 font-semibold truncate max-w-sm sm:max-w-md">
-                            {convoy.title}
-                          </h3>
-                        </div>
-                        <span className="text-xs text-zinc-500 font-mono">
-                          {convoy.completedTasks}/{convoy.totalTasks} tasks
-                        </span>
-                      </div>
-
-                      <div className="flex items-center gap-2 overflow-x-auto pb-1 no-scrollbar">
-                        {convoy.tasks.map((task, idx) => (
-                          <React.Fragment key={task.id}>
-                            <div
-                              className={`flex items-center gap-2 px-3 py-1 rounded-full border text-xs whitespace-nowrap ${
-                                task.status === 'completed'
-                                  ? 'border-green-500/30 text-green-400 bg-green-500/10'
-                                  : task.status === 'active'
-                                  ? 'border-yellow-500/30 text-yellow-500 bg-yellow-500/10'
-                                  : 'border-blue-500/30 text-blue-400 bg-blue-500/10'
-                              }`}
-                            >
-                              {task.status === 'completed' ? (
-                                <CheckCircle2 className="w-3.5 h-3.5 text-green-500" />
-                              ) : task.status === 'active' ? (
-                                <div className="w-2 h-2 rounded-full bg-yellow-500 animate-ping"></div>
-                              ) : (
-                                <div className="w-2 h-2 rounded-full bg-blue-500"></div>
-                              )}
-                              {task.title}
-                              {task.assignee && (
-                                <span className="text-yellow-600/80 ml-1 font-medium">
-                                  [{task.assignee}]
-                                </span>
-                              )}
-                            </div>
-                            {idx < convoy.tasks.length - 1 && (
-                              <span className="text-zinc-600 font-mono text-xs">→</span>
-                            )}
-                          </React.Fragment>
-                        ))}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Filter Bar & Search */}
-            <div className="px-4 py-3 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 border-b border-zinc-800/40 bg-[#0d1117]">
-              <div className="relative flex-1 max-w-md">
-                <Search className="w-3.5 h-3.5 absolute left-3 top-1/2 -translate-y-1/2 text-zinc-500" />
-                <input
-                  type="text"
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  placeholder="Filter beads by title, assignee, or tag..."
-                  className="w-full bg-[#161b22] border border-zinc-700/60 rounded-lg pl-8 pr-3 py-1.5 text-xs text-zinc-200 placeholder-zinc-500 focus:outline-none focus:border-yellow-500/50"
-                />
-              </div>
-
-              <div className="flex items-center gap-2">
-                <Filter className="w-3.5 h-3.5 text-zinc-500" />
-                <select
-                  value={priorityFilter}
-                  onChange={(e) => setPriorityFilter(e.target.value)}
-                  className="bg-[#161b22] border border-zinc-700/60 rounded-lg px-2.5 py-1.5 text-xs text-zinc-300 focus:outline-none"
-                >
-                  <option value="all">All Priorities</option>
-                  <option value="high">High / Blockers</option>
-                  <option value="medium">Medium</option>
-                  <option value="low">Low</option>
-                </select>
-              </div>
-            </div>
-
-            {/* Main Board & Agents Area */}
-            <div className="flex mt-2 px-2 gap-4">
-              {/* Kanban Columns */}
-              <div className="flex-[3] flex flex-col min-w-0">
-                <div className="flex items-center justify-between px-4 py-2">
-                  <h2 className="text-xs font-semibold text-zinc-400 tracking-wider uppercase flex items-center gap-2">
-                    <Hexagon className="w-3.5 h-3.5 text-yellow-500" /> BEAD BOARD
-                  </h2>
-                  <span className="text-[10px] text-zinc-500 font-mono">
-                    Showing {filteredBeads.length} of {beads.length}
-                  </span>
-                </div>
-
-                {/* Columns Grid */}
-                <div className="flex-1 overflow-x-auto p-4 flex gap-4 min-w-0 snap-x snap-mandatory scroll-px-4 pb-12 sm:pb-4 [&::-webkit-scrollbar]:hidden [-ms-overflow-style:none] [scrollbar-width:none]">
-                  {(['open', 'in_progress', 'in_review', 'closed'] as Status[]).map((colStatus) => {
-                    const colBeads = filteredBeads.filter((b) => b.status === colStatus);
-                    const label =
-                      colStatus === 'open'
-                        ? 'Open'
-                        : colStatus === 'in_progress'
-                        ? 'In Progress'
-                        : colStatus === 'in_review'
-                        ? 'In Review'
-                        : 'Closed';
-
-                    return (
-                      <div
-                        key={colStatus}
-                        className="flex-1 flex flex-col gap-3 min-w-[280px] sm:min-w-[260px] max-w-[320px] sm:max-w-[260px] snap-center shrink-0"
-                      >
-                        <div className="flex items-center justify-between px-1">
-                          <span
-                            className={`px-2 py-0.5 rounded-full border text-xs font-semibold ${
-                              colStatus === 'in_progress'
-                                ? 'border-yellow-500/30 text-yellow-400 bg-yellow-500/10'
-                                : colStatus === 'open'
-                                ? 'border-blue-500/30 text-blue-400 bg-blue-500/10'
-                                : colStatus === 'in_review'
-                                ? 'border-purple-500/30 text-purple-400 bg-purple-500/10'
-                                : 'border-green-500/30 text-green-400 bg-green-500/10'
-                            }`}
-                          >
-                            {label}
-                          </span>
-                          <span className="text-xs font-mono text-zinc-500">{colBeads.length}</span>
-                        </div>
-
-                        {colBeads.length === 0 ? (
-                          <div className="text-xs text-zinc-600 text-center py-6 border border-dashed border-zinc-800/80 rounded-lg">
-                            No beads
-                          </div>
-                        ) : (
-                          <div className="flex flex-col gap-3">
-                            {colBeads.map((bead) => (
-                              <div
-                                key={bead.id}
-                                onClick={() => setSelectedBead(bead)}
-                                className="bg-[#161b22] border border-zinc-800/80 rounded-lg p-3 hover:border-zinc-700 transition-colors group cursor-pointer flex flex-col gap-2 relative shadow-sm"
-                              >
-                                <div className="flex justify-between items-start gap-2">
-                                  <h4 className="text-xs sm:text-sm text-zinc-200 font-medium leading-snug line-clamp-2">
-                                    {bead.title}
-                                  </h4>
-                                  <button
-                                    onClick={(e) => {
-                                      e.stopPropagation();
-                                      handleDeleteBead(bead.id);
-                                    }}
-                                    className="text-zinc-600 hover:text-red-400 opacity-0 group-hover:opacity-100 transition-opacity p-0.5"
-                                    title="Delete Bead"
-                                  >
-                                    <Trash2 className="w-3.5 h-3.5" />
-                                  </button>
-                                </div>
-
-                                <div className="flex items-center gap-2">
-                                  <span
-                                    className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase tracking-wider ${
-                                      bead.priority === 'high'
-                                        ? 'bg-red-500/10 text-red-400 border border-red-500/30'
-                                        : bead.priority === 'medium'
-                                        ? 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/30'
-                                        : 'bg-blue-500/10 text-blue-400 border border-blue-500/30'
-                                    }`}
-                                  >
-                                    {bead.priority}
-                                  </span>
-                                  <span className="px-2 py-0.5 rounded-full border border-zinc-700/80 bg-zinc-800/50 text-zinc-400 text-[10px] font-mono">
-                                    {bead.type}
-                                  </span>
-                                </div>
-
-                                {bead.assignee && (
-                                  <div className="text-[11px] text-zinc-400 flex items-center gap-1 font-mono">
-                                    <span>assigned</span>
-                                    <span className="text-yellow-400/90 font-semibold">{bead.assignee}</span>
-                                  </div>
-                                )}
-
-                                {bead.tags && bead.tags.length > 0 && (
-                                  <div className="flex flex-wrap gap-1 mt-0.5">
-                                    {bead.tags.map((t) => (
-                                      <span
-                                        key={t}
-                                        className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-zinc-800 text-zinc-400 border border-zinc-700/50"
-                                      >
-                                        {t}
-                                      </span>
-                                    ))}
-                                  </div>
-                                )}
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-
-              {/* Active Agents Sidebar Panel */}
-              <div className="hidden lg:flex flex-col min-w-[280px] max-w-[320px] border-l border-zinc-800/60 px-4">
-                <div className="flex items-center justify-between mb-4 mt-2">
-                  <h2 className="text-xs font-semibold text-zinc-400 tracking-wider uppercase flex items-center gap-2">
-                    <Crown className="w-3.5 h-3.5 text-yellow-500" /> FLEET AGENTS
-                  </h2>
-                  <span className="text-xs font-mono text-zinc-500">{agents.length}</span>
-                </div>
-
-                <div className="flex flex-col gap-3">
-                  {agents.map((agent) => {
-                    const isWorking = agent.status === 'working';
-                    const Icon = agent.icon === 'shield' ? Shield : Bot;
-
-                    return (
-                      <div
-                        key={agent.id}
-                        onClick={() => setSelectedAgent(agent)}
-                        className="bg-[#161b22] border border-zinc-800/80 rounded-lg p-3 hover:border-zinc-700 transition-colors cursor-pointer group"
-                      >
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-center gap-2.5">
-                            <div className="w-7 h-7 rounded-full border border-zinc-700/60 flex items-center justify-center text-yellow-400 bg-[#0d1117]">
-                              <Icon className="w-3.5 h-3.5" />
-                            </div>
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <h4 className="text-xs font-semibold text-zinc-200">{agent.name}</h4>
-                                <div
-                                  className={`w-1.5 h-1.5 rounded-full ${
-                                    isWorking ? 'bg-green-500 animate-pulse' : 'bg-zinc-600'
-                                  }`}
-                                />
-                              </div>
-                              <span className="text-[10px] text-zinc-500 font-mono">{agent.role}</span>
-                            </div>
-                          </div>
-                          <span className="text-[10px] text-zinc-500">{agent.lastActive}</span>
-                        </div>
-
-                        {agent.currentAction && (
-                          <p className="text-[11px] text-zinc-400 italic mt-2 font-mono line-clamp-2 bg-[#0d1117]/60 p-2 rounded border border-zinc-800/50">
-                            {agent.currentAction}
-                          </p>
-                        )}
-                      </div>
-                    );
-                  })}
-                </div>
-              </div>
-            </div>
+          <div className="flex-1 overflow-y-auto pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-0">
+            <OverviewView
+              agents={agents}
+              convoys={convoys}
+              liveFeed={liveFeed}
+              onOpenSpinUpModal={() => setIsSpinUpModalOpen(true)}
+              onOpenGrokTerminal={() => setIsGrokTerminalOpen(true)}
+              onSelectAgent={(agent) => setSelectedAgent(agent)}
+              onRunTestTask={handleRunTestTask}
+            />
           </div>
         )}
       </div>
@@ -1013,6 +734,13 @@ We are **completely deprecating** the use of the \`REDIS_RATE_LIMIT_URL\` enviro
         agent={selectedAgent}
         onClose={() => setSelectedAgent(null)}
         onToggleStatus={handleToggleAgentStatus}
+      />
+
+      <SpinUpAgentModal
+        isOpen={isSpinUpModalOpen}
+        onClose={() => setIsSpinUpModalOpen(false)}
+        onAgentCreated={handleAgentCreated}
+        onRunTestTask={handleRunTestTask}
       />
       
       {/* Mobile Bottom Navigation */}

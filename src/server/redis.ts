@@ -4,10 +4,11 @@ import dotenv from 'dotenv';
 dotenv.config();
 
 // Default to dummy clients if no URL is explicitly provided to avoid connection spam in AI Studio
-const shouldDisableRedis = !process.env.REDIS_URL && process.env.NODE_ENV !== 'production';
+const shouldDisableRedis = !process.env.REDIS_URL && !process.env.REDIS_SLOW_URL && !process.env.REDIS_FAST_URL && process.env.NODE_ENV !== 'production';
 
-export const mainRedisClient = createClient({
-  url: (process.env.REDIS_URL || 'redis://localhost:6379').replace(/^https:\/\//i, 'rediss://'),
+// Fast Redis DB for volatile telemetry, real-time SSE, and rate-limiters
+export const fastRedisClient = createClient({
+  url: (process.env.REDIS_FAST_URL || process.env.REDIS_URL || 'redis://localhost:6379').replace(/^https:\/\//i, 'rediss://'),
   password: process.env.UPSTASH_REDIS_REST_TOKEN_2 || undefined,
   socket: {
     connectTimeout: 5000,
@@ -19,8 +20,9 @@ export const mainRedisClient = createClient({
   }
 });
 
-export const agentRedisClient = createClient({
-  url: (process.env.AGENT_REDIS_URL || 'redis://localhost:6380').replace(/^https:\/\//i, 'rediss://'),
+// Slow Redis DB for immutable governance, core reasoning, Crucible logic, JobQueue & DLQ
+export const slowRedisClient = createClient({
+  url: (process.env.REDIS_SLOW_URL || process.env.REDIS_URL || 'redis://localhost:6380').replace(/^https:\/\//i, 'rediss://'),
   password: process.env.UPSTASH_REDIS_REST_TOKEN || undefined,
   socket: {
     connectTimeout: 5000,
@@ -32,12 +34,26 @@ export const agentRedisClient = createClient({
   }
 });
 
-mainRedisClient.on('error', (err) => {
-  if (err.code !== 'ECONNREFUSED') console.error('Main Redis Client Error', err);
+export const mainRedisClient = fastRedisClient;
+export const agentRedisClient = slowRedisClient;
+
+/**
+ * Ensures reasoning and governance are isolated from telemetry jitter.
+ */
+export function getSlowRedisClient() {
+  return slowRedisClient;
+}
+
+export function getFastRedisClient() {
+  return fastRedisClient;
+}
+
+fastRedisClient.on('error', (err: any) => {
+  if (err?.code !== 'ECONNREFUSED') console.error('Fast Redis Client Error', err);
 });
 
-agentRedisClient.on('error', (err) => {
-  if (err.code !== 'ECONNREFUSED') console.error('Agent Redis Client Error', err);
+slowRedisClient.on('error', (err: any) => {
+  if (err?.code !== 'ECONNREFUSED') console.error('Slow Redis Client Error', err);
 });
 
 export async function connectRedis() {
@@ -46,7 +62,8 @@ export async function connectRedis() {
     return;
   }
   await Promise.all([
-    mainRedisClient.connect().catch(() => console.warn('Main Redis connection failed (running locally without redis?)')),
-    agentRedisClient.connect().catch(() => console.warn('Agent Redis connection failed (running locally without redis?)'))
+    fastRedisClient.connect().catch(() => console.warn('Fast Redis connection failed (running in-memory fallback)')),
+    slowRedisClient.connect().catch(() => console.warn('Slow Redis connection failed (running in-memory fallback)'))
   ]);
 }
+
