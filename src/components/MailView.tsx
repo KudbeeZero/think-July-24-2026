@@ -12,7 +12,13 @@ import {
   ArrowRight, 
   User,
   Inbox,
-  AlertCircle
+  AlertCircle,
+  RefreshCw,
+  Layers,
+  Shield,
+  Zap,
+  Server,
+  Plug
 } from 'lucide-react';
 import { MailItem } from '../types';
 
@@ -30,14 +36,21 @@ export function MailView({
   onSimulateAlert 
 }: MailViewProps) {
   const [selectedId, setSelectedId] = useState<string | null>(mailItems[0]?.id || null);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const selectedMail = mailItems.find(m => m.id === selectedId) || mailItems[0];
+  const unreadCount = mailItems.filter(m => m.unread).length;
 
   const handleSelectMail = (item: MailItem) => {
     setSelectedId(item.id);
     if (item.unread && onMarkAsRead) {
       onMarkAsRead(item.id);
     }
+  };
+
+  const handleManualSync = () => {
+    setIsSyncing(true);
+    setTimeout(() => setIsSyncing(false), 1200);
   };
 
   const getSeverityStyles = (severity?: string) => {
@@ -70,56 +83,102 @@ export function MailView({
   };
 
   return (
-    <div className="p-4 sm:p-6 space-y-6 max-w-7xl mx-auto pb-28 lg:pb-8 h-full flex flex-col">
-      {/* Mail View Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-4 border-b border-zinc-800">
-        <div>
-          <h2 className="text-lg font-semibold text-zinc-100 flex items-center gap-2">
-            <Mail className="w-5 h-5 text-yellow-500" /> Inter-Agent Mail &amp; Dispatch Feed
-          </h2>
-          <p className="text-xs text-zinc-400 mt-1">
-            High-priority inter-agent communications, system-wide orchestrations, and critical exceptions
-          </p>
+    <div className="space-y-4 sm:space-y-6 max-w-[1600px] mx-auto pb-28 font-mono select-none px-2 sm:px-4">
+      
+      {/* 1. MAIL EXECUTIVE TRANSPORT & CONTROL BAR */}
+      <div className="bg-[#121620] border-2 border-zinc-800 rounded-2xl p-3 sm:p-5 shadow-2xl flex flex-col xl:flex-row items-center justify-between gap-4 sm:gap-6 backdrop-blur-md">
+        
+        {/* Left: Branding & Counts */}
+        <div className="flex flex-wrap items-center gap-3 w-full xl:w-auto justify-between xl:justify-start">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 sm:w-12 sm:h-12 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-600/30 border border-amber-500/40 flex items-center justify-center text-amber-400 shadow-inner shrink-0">
+              <Mail className="w-5 h-5 sm:w-6 sm:h-6 animate-pulse" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2 flex-wrap">
+                <h1 className="text-xs sm:text-base font-extrabold text-zinc-100 tracking-wider uppercase">
+                  INTER-AGENT MAIL & DISPATCH STREAM
+                </h1>
+                <span className="px-2 py-0.5 rounded bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[9px] font-bold">
+                  {unreadCount} UNREAD ALERTS
+                </span>
+              </div>
+              <p className="text-[10px] text-zinc-400 font-mono mt-0.5">
+                High-Priority Inter-Agent Communications & System Orchestration Dispatch V3.2
+              </p>
+            </div>
+          </div>
         </div>
 
-        {/* Action Buttons */}
-        <div className="flex items-center gap-2.5">
+        {/* Center: Quick Stats Pills */}
+        <div className="hidden lg:flex items-center gap-3 bg-zinc-950/60 border border-zinc-850 px-4 py-2.5 rounded-xl">
+          <div className="flex items-center gap-1.5 text-[11px]">
+            <span className="w-2 h-2 rounded-full bg-amber-500 animate-pulse" />
+            <span className="text-zinc-400">Total Mail:</span>
+            <span className="text-amber-400 font-bold">{mailItems.length}</span>
+          </div>
+          <div className="h-4 w-px bg-zinc-800" />
+          <div className="flex items-center gap-1.5 text-[11px]">
+            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
+            <span className="text-zinc-400">Stream Status:</span>
+            <span className="text-emerald-400 font-bold">Synchronized</span>
+          </div>
+        </div>
+
+        {/* Right: Actions */}
+        <div className="flex items-center gap-2 w-full xl:w-auto justify-end">
           {onMarkAllAsRead && (
             <button
               onClick={onMarkAllAsRead}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-zinc-800 text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40 text-xs font-medium transition-all"
+              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-bold border border-zinc-700 transition-all shadow-md cursor-pointer"
             >
-              <Check className="w-3.5 h-3.5" /> Mark All as Read
+              <Check className="w-3.5 h-3.5 text-amber-400" />
+              <span>Mark All Read</span>
             </button>
           )}
 
           {onSimulateAlert && (
             <button
               onClick={onSimulateAlert}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-yellow-500 hover:bg-yellow-400 text-zinc-950 text-xs font-semibold transition-all shadow-lg shadow-yellow-500/10 animate-pulse"
+              className="flex items-center gap-1.5 px-4 py-2 rounded-xl bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-400 hover:to-orange-400 text-zinc-950 font-extrabold text-xs transition-all shadow-lg shadow-amber-500/20 active:scale-95 cursor-pointer"
             >
-              <Sparkles className="w-3.5 h-3.5 shrink-0" /> Simulate Live Alert
+              <Sparkles className="w-4 h-4" />
+              <span>Simulate Alert</span>
             </button>
           )}
+
+          <button
+            onClick={handleManualSync}
+            className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl bg-zinc-800 hover:bg-zinc-700 text-zinc-200 text-xs font-bold border border-zinc-700 transition-all shadow-md cursor-pointer"
+          >
+            <RefreshCw className={`w-3.5 h-3.5 text-amber-400 ${isSyncing ? 'animate-spin' : ''}`} />
+            <span>Sync</span>
+          </button>
         </div>
       </div>
 
       {mailItems.length === 0 ? (
-        <div className="bg-[#161b22] border border-zinc-800/80 rounded-xl p-12 text-center flex flex-col items-center justify-center gap-3">
-          <div className="w-12 h-12 rounded-full bg-zinc-800/40 border border-zinc-700/50 flex items-center justify-center text-zinc-500">
+        <div className="bg-[#121620] border-2 border-zinc-800 rounded-2xl p-16 text-center flex flex-col items-center justify-center gap-3">
+          <div className="w-12 h-12 rounded-2xl bg-zinc-950 border border-zinc-800 flex items-center justify-center text-zinc-500">
             <Inbox className="w-6 h-6" />
           </div>
           <div className="space-y-1">
-            <h3 className="text-sm font-semibold text-zinc-300">No Mail Received</h3>
+            <h3 className="text-sm font-bold text-zinc-300">No Mail Received</h3>
             <p className="text-xs text-zinc-500 max-w-xs mx-auto">
-              Simulate a new incoming alert above to see the interactive message stream in real-time.
+              Simulate an incoming alert above to observe the inter-agent message stream in real-time.
             </p>
           </div>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch flex-1">
-          {/* Left Column: Scrollable List of Mail */}
-          <div className="lg:col-span-5 flex flex-col gap-3 max-h-[750px] overflow-y-auto pr-1">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-5 items-stretch">
+          
+          {/* Left Column: Mail Message List */}
+          <div className="lg:col-span-5 bg-[#121620] border-2 border-zinc-800 rounded-2xl p-4 shadow-xl flex flex-col gap-3 max-h-[70vh] overflow-y-auto custom-scrollbar">
+            <div className="flex items-center justify-between pb-3 border-b border-zinc-800">
+              <span className="text-xs font-bold text-zinc-200 uppercase tracking-wider">Inbox Stream ({mailItems.length})</span>
+              <span className="text-[10px] text-zinc-400 font-mono">{unreadCount} unread</span>
+            </div>
+
             {mailItems.map((item) => {
               const style = getSeverityStyles(item.severity);
               const isSelected = selectedMail && selectedMail.id === item.id;
@@ -128,179 +187,79 @@ export function MailView({
                 <div
                   key={item.id}
                   onClick={() => handleSelectMail(item)}
-                  className={`p-4 rounded-xl border transition-all duration-200 text-left cursor-pointer flex gap-3 relative overflow-hidden group ${
+                  className={`p-3.5 rounded-xl border transition-all duration-200 text-left cursor-pointer flex gap-3 relative overflow-hidden group ${
                     isSelected
-                      ? 'bg-[#1c222b] border-yellow-500/50 shadow-md shadow-yellow-500/5'
+                      ? 'bg-zinc-900 border-amber-500/50 shadow-lg'
                       : item.unread
-                      ? 'bg-[#141921] border-zinc-800/80 hover:bg-[#161c24]'
-                      : 'bg-[#0d1117] border-zinc-800/50 hover:bg-zinc-800/20'
+                      ? 'bg-zinc-950/80 border-zinc-800 hover:border-zinc-700'
+                      : 'bg-zinc-950/40 border-zinc-850 hover:bg-zinc-900/40'
                   }`}
                 >
-                  {/* Left Active/Unread Line Indicator */}
                   {item.unread && (
-                    <span className="absolute left-0 inset-y-0 w-1 bg-yellow-500 animate-pulse" />
+                    <span className="absolute left-0 inset-y-0 w-1 bg-amber-500 animate-pulse" />
                   )}
 
-                  {/* Icon Avatar */}
                   <div className={`w-9 h-9 rounded-xl border flex items-center justify-center shrink-0 ${style.bg}`}>
                     {item.from === 'Mayor' ? (
-                      <Crown className="w-4 h-4 text-yellow-400" />
+                      <Crown className="w-4 h-4 text-amber-400" />
                     ) : item.from === 'refinery' ? (
                       <Terminal className="w-4 h-4 text-blue-400" />
                     ) : (
-                      <Bot className="w-4 h-4 text-emerald-400" />
+                      <Bot className="w-4 h-4 text-green-400" />
                     )}
                   </div>
 
-                  {/* Mail metadata and title */}
-                  <div className="flex-1 min-w-0 space-y-1">
+                  <div className="min-w-0 flex-1">
                     <div className="flex items-center justify-between gap-2">
-                      <div className="flex items-center gap-1.5 min-w-0">
-                        <span className="text-xs font-semibold text-zinc-200 truncate">{item.from}</span>
-                        <span className="text-[9px] text-zinc-500 font-mono px-1 bg-zinc-800 rounded truncate max-w-[80px]">
-                          {item.role}
-                        </span>
-                      </div>
-                      <span className="text-[10px] text-zinc-500 shrink-0 font-mono">{item.time}</span>
+                      <span className="text-xs font-bold text-zinc-200 truncate">{item.from}</span>
+                      <span className="text-[9px] text-zinc-400 font-mono">{item.time}</span>
                     </div>
-
-                    <h4 className={`text-xs truncate transition-colors ${item.unread ? 'font-bold text-zinc-100' : 'text-zinc-300'} ${isSelected ? 'text-yellow-400' : ''}`}>
-                      {item.subject}
-                    </h4>
-                    <p className="text-[11px] text-zinc-400 line-clamp-2 leading-relaxed font-mono">
-                      {item.preview}
-                    </p>
-
-                    <div className="flex items-center gap-1.5 pt-1.5">
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded border uppercase font-bold font-mono ${style.badge}`}>
-                        {item.severity || 'info'}
-                      </span>
-                      {item.unread && (
-                        <span className="px-1 text-[8px] font-bold bg-yellow-500/10 border border-yellow-500/30 text-yellow-500 rounded font-sans animate-pulse">
-                          UNREAD
-                        </span>
-                      )}
-                    </div>
+                    <p className="text-xs font-semibold text-zinc-100 truncate mt-0.5 font-sans">{item.subject}</p>
+                    <p className="text-[11px] text-zinc-400 truncate mt-1 font-sans">{item.preview}</p>
                   </div>
                 </div>
               );
             })}
           </div>
 
-          {/* Right Column: Complete Selected Mail Viewer (Terminal Display) */}
-          <div className="lg:col-span-7 bg-[#161b22] border border-zinc-800/80 rounded-2xl flex flex-col overflow-hidden max-h-[750px]">
+          {/* Right Column: Mail Detail Viewer */}
+          <div className="lg:col-span-7 bg-[#121620] border-2 border-zinc-800 rounded-2xl p-5 sm:p-6 shadow-xl flex flex-col justify-between">
             {selectedMail ? (
-              <div className="flex flex-col h-full overflow-y-auto">
-                {/* Header Metadata Section */}
-                <div className="p-5 border-b border-zinc-800/80 bg-[#1d242f]/30 space-y-3">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div className="flex items-center gap-2.5">
-                      <div className="w-10 h-10 rounded-xl bg-zinc-800/60 border border-zinc-700/50 flex items-center justify-center">
-                        {selectedMail.from === 'Mayor' ? (
-                          <Crown className="w-5 h-5 text-yellow-400" />
-                        ) : (
-                          <Bot className="w-5 h-5 text-emerald-400" />
-                        )}
-                      </div>
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <h3 className="text-sm font-semibold text-zinc-100">{selectedMail.from}</h3>
-                          <span className="text-[10px] text-zinc-400 font-mono bg-zinc-800/80 px-1.5 py-0.5 rounded border border-zinc-700/40">
-                            {selectedMail.role}
-                          </span>
-                        </div>
-                        <p className="text-[10px] text-zinc-500 font-mono">Sent: {selectedMail.time}</p>
-                      </div>
-                    </div>
-
-                    <div className="flex items-center gap-2">
-                      <span className={`text-[10px] px-2 py-0.5 rounded-full border font-mono font-bold uppercase ${getSeverityStyles(selectedMail.severity).badge}`}>
+              <div className="space-y-5">
+                <div className="flex items-start justify-between pb-4 border-b border-zinc-800">
+                  <div className="space-y-1.5">
+                    <div className="flex items-center gap-2 flex-wrap">
+                      <span className="text-xs font-bold text-amber-400 font-mono uppercase">{selectedMail.from}</span>
+                      <span className={`px-2 py-0.5 rounded text-[9px] font-bold uppercase border ${getSeverityStyles(selectedMail.severity).badge}`}>
                         {selectedMail.severity || 'info'}
                       </span>
                     </div>
+                    <h3 className="text-sm sm:text-base font-extrabold text-zinc-100 font-sans">
+                      {selectedMail.subject}
+                    </h3>
+                    <p className="text-[10px] text-zinc-400 font-mono">Timestamp: {selectedMail.time}</p>
                   </div>
-
-                  <h1 className="text-sm font-bold text-zinc-100 leading-snug">
-                    {selectedMail.subject}
-                  </h1>
                 </div>
 
-                {/* Long-form Message Body */}
-                <div className="p-6 flex-1 space-y-6">
-                  <div className="text-xs text-zinc-300 leading-relaxed font-mono whitespace-pre-line">
-                    {selectedMail.content || selectedMail.preview}
-                  </div>
-
-                  {/* Code Diff Block */}
-                  {selectedMail.diff && (
-                    <div className="space-y-2">
-                      <div className="flex items-center gap-1.5 text-[10px] text-zinc-500 font-mono">
-                        <Terminal className="w-3.5 h-3.5" />
-                        <span>INTER-AGENT STAGED CODE DIFF</span>
-                      </div>
-                      
-                      <div className="bg-[#0d1117] border border-zinc-800 rounded-xl overflow-hidden font-mono text-[11px] leading-relaxed shadow-inner">
-                        <div className="bg-[#161b22] px-4 py-2 border-b border-zinc-800 text-zinc-400 flex items-center justify-between">
-                          <span>Console Sandbox View</span>
-                          <span className="text-[9px] px-1 py-0.5 bg-zinc-800 text-zinc-500 rounded">PATCH STAGED</span>
-                        </div>
-                        <div className="p-4 overflow-x-auto max-h-[300px] whitespace-pre text-left">
-                          {selectedMail.diff.split('\n').map((line, idx) => {
-                            const isAdded = line.startsWith('+');
-                            const isRemoved = line.startsWith('-');
-                            const isHeading = line.startsWith('@@') || line.startsWith('+++') || line.startsWith('---');
-
-                            return (
-                              <div 
-                                key={idx} 
-                                className={`px-2 py-0.5 rounded ${
-                                  isAdded 
-                                    ? 'bg-emerald-950/40 text-emerald-400 border-l-2 border-emerald-500/80' 
-                                    : isRemoved 
-                                    ? 'bg-red-950/40 text-red-400 border-l-2 border-red-500/80' 
-                                    : isHeading
-                                    ? 'text-purple-400 font-semibold'
-                                    : 'text-zinc-400'
-                                }`}
-                              >
-                                {line}
-                              </div>
-                            );
-                          })}
-                        </div>
-                      </div>
-                    </div>
-                  )}
-                </div>
-
-                {/* Footer / Acknowledgement Area */}
-                <div className="p-4 border-t border-zinc-800 bg-[#0d1117]/40 flex items-center justify-between">
-                  <span className="text-[10px] text-zinc-500 font-mono">MESSAGE LOCK ID: {selectedMail.id.toUpperCase()}</span>
-                  <div className="flex items-center gap-2">
-                    {selectedMail.unread && onMarkAsRead ? (
-                      <button
-                        onClick={() => onMarkAsRead(selectedMail.id)}
-                        className="flex items-center gap-1.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 px-3 py-1.5 rounded-lg text-xs font-semibold transition-colors"
-                      >
-                        <Check className="w-3.5 h-3.5" /> Acknowledge Alert
-                      </button>
-                    ) : (
-                      <span className="flex items-center gap-1.5 text-emerald-400 text-xs font-semibold font-mono bg-emerald-500/10 border border-emerald-500/20 px-2.5 py-1 rounded-lg">
-                        <CheckCircle2 className="w-3.5 h-3.5" /> ACKNOWLEDGED
-                      </span>
-                    )}
-                  </div>
+                <div className="bg-zinc-950/80 border border-zinc-850 rounded-xl p-4 sm:p-5 text-xs text-zinc-300 font-sans leading-relaxed whitespace-pre-wrap max-h-[40vh] overflow-y-auto custom-scrollbar">
+                  {selectedMail.content || selectedMail.preview}
                 </div>
               </div>
             ) : (
-              <div className="flex-1 flex flex-col items-center justify-center p-8 text-center text-zinc-500 gap-2">
-                <Mail className="w-8 h-8 text-zinc-600" />
-                <p className="text-xs">Select an inter-agent mail item from the left stream to view full telemetry and diff payloads.</p>
+              <div className="flex-1 flex items-center justify-center text-xs text-zinc-500 font-mono py-20">
+                Select a message to inspect full telemetry payload
               </div>
             )}
+
+            <div className="border-t border-zinc-850 pt-3 mt-6 text-[10px] text-zinc-500 flex items-center justify-between font-mono">
+              <span>Secure Dispatch Protocol</span>
+              <span className="text-amber-400 font-bold">Encrypted End-to-End</span>
+            </div>
           </div>
+
         </div>
       )}
+
     </div>
   );
 }

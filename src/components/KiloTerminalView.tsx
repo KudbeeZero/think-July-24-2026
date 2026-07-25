@@ -21,6 +21,9 @@ import { NeuralNetMesh, NeuralNode, NeuralLink } from './kilo/NeuralNetMesh';
 import { DeviceSyncTopology, DeviceSyncNode } from './kilo/DeviceSyncTopology';
 import { ResiliencyControls } from './kilo/ResiliencyControls';
 import { PersistentToastTray } from './kilo/PersistentToastTray';
+import { FalloutAnalyticalCharts } from './kilo/FalloutAnalyticalCharts';
+import { SlideWindowGovernor } from './kilo/SlideWindowGovernor';
+import { OrchestratorControlPanel } from './kilo/OrchestratorControlPanel';
 
 interface KiloTerminalViewProps {
   totalReasoningTokens: number;
@@ -758,6 +761,7 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
             setInspectedNode={setInspectedNode}
             addLog={addLog}
             pulseTrigger={pulseTrigger}
+            onToggleLink={handleToggleNodeLink}
           />
         </div>
 
@@ -869,6 +873,12 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
           />
         </div>
       </div>
+
+      {/* Fallout Metric Analytical Chart Section */}
+      <FalloutAnalyticalCharts healthData={healthData} />
+
+      {/* Micro-Server Orchestrator and Database Resilience Controls */}
+      <OrchestratorControlPanel />
 
       {/* Grid of Key Diagnostics */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
@@ -983,6 +993,11 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
                 Click "Simulate Ingest" rapidly to saturate the bucket and witness how the backend resiliently rejects overflowing telemetry.
               </p>
             )}
+
+            <SlideWindowGovernor 
+              pulseTrigger={pulseTrigger}
+              rateLimitStatus={rateLimitStatus}
+            />
           </div>
 
           <div className="border-t border-zinc-800/40 pt-3 mt-4 flex items-center justify-between text-[9px] text-zinc-500 font-mono">

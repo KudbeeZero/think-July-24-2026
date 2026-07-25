@@ -45,6 +45,7 @@ interface NeuralNetMeshProps {
   setInspectedNode: (node: NeuralNode | null) => void;
   addLog: (msg: string, type: 'info' | 'warn' | 'success' | 'err') => void;
   pulseTrigger?: number;
+  onToggleLink?: (linkId: string) => void;
 }
 
 export const NeuralNetMesh: React.FC<NeuralNetMeshProps> = ({
@@ -62,6 +63,7 @@ export const NeuralNetMesh: React.FC<NeuralNetMeshProps> = ({
   setInspectedNode,
   addLog,
   pulseTrigger = 0,
+  onToggleLink,
 }) => {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const particlesRef = useRef<Particle[]>([]);
@@ -259,6 +261,34 @@ export const NeuralNetMesh: React.FC<NeuralNetMeshProps> = ({
     };
   }, [nodes, links, inspectedNode, activeThemeProfile, safetyThreshold, simulationSpeed, tempBias, symmetryMode]);
 
+  const distanceToSegment = (x: number, y: number, x1: number, y1: number, x2: number, y2: number) => {
+    const A = x - x1;
+    const B = y - y1;
+    const C = x2 - x1;
+    const D = y2 - y1;
+
+    const dot = A * C + B * D;
+    const lenSq = C * C + D * D;
+    let param = -1;
+    if (lenSq !== 0) param = dot / lenSq;
+
+    let xx, yy;
+    if (param < 0) {
+      xx = x1;
+      yy = y1;
+    } else if (param > 1) {
+      xx = x2;
+      yy = y2;
+    } else {
+      xx = x1 + param * C;
+      yy = y1 + param * D;
+    }
+
+    const dx = x - xx;
+    const dy = y - yy;
+    return Math.sqrt(dx * dx + dy * dy);
+  };
+
   const handleCanvasClick = (e: React.MouseEvent<HTMLCanvasElement>) => {
     const canvas = canvasRef.current;
     if (!canvas) return;
@@ -276,6 +306,28 @@ export const NeuralNetMesh: React.FC<NeuralNetMeshProps> = ({
       addLog(`[Node Inspector] Inspected node "${found.label}" (Layer: ${found.layer.toUpperCase()}) | Activation: ${found.activation}`, 'info');
     } else {
       setInspectedNode(null);
+
+      // Link selection with custom distance calculation
+      let closestLink: any = null;
+      let minDistance = Infinity;
+
+      links.forEach(link => {
+        const fromNode = nodes.find(n => n.id === link.from);
+        const toNode = nodes.find(n => n.id === link.to);
+        if (!fromNode || !toNode) return;
+
+        const dist = distanceToSegment(clickX, clickY, fromNode.x, fromNode.y, toNode.x, toNode.y);
+        if (dist < minDistance) {
+          minDistance = dist;
+          closestLink = link;
+        }
+      });
+
+      if (closestLink && minDistance <= 8.0) {
+        if (onToggleLink) {
+          onToggleLink(closestLink.id);
+        }
+      }
     }
   };
 

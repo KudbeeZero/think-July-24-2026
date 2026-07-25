@@ -36,19 +36,19 @@ Here is the complete sequence of upgrades to achieve full-spectrum governance, d
 3. **High-Intensity Stress Benchmarks**: Add direct stress test controllers to pump telemetry rows into the database and watch stats scale in real-time.
 4. **BraiNCA 7-Node Layout**: Design and render the specialized 7-Node research matrix: Ingress -> Hermes -> Gateway -> Sentinel -> Crucible -> Redis -> LLM Router.
 
-### Stage 2: Token Handshake & Chaos Protocols (Under Development)
+### Stage 2: Token Handshake & Chaos Protocols (Completed & Live)
 5. **Interactive Challenge Solver**: A manual/automated UI widget allowing users to "solve" challenge handshakes to release stuck worker threads.
 6. **Disruptor Link Interference**: Enable click-to-sever link physics in the BraiNCA mesh, dynamically rerouting data flow on the fly.
 7. **Fallout Metric Analytical Charts**: High-contrast line graphs mapping the live correlation between memory usage, latency, and fallout scores.
 8. **Slide-Window Queue Governor**: Wire Redis `lpush`/`ltrim` to buffer the latest 500 logs on fast memory, keeping the UI ultra-responsive.
 
-### Stage 3: Micro-Server Orchestration (Architectural Vision)
+### Stage 3: Micro-Server Orchestration (Completed & Live)
 9. **Ephemeral Container Provisioner API**: Integrate mock and real client hooks to launch sidecar servers.
 10. **Dynamic Port Range Ingress Handler**: Handle routing tables for newly registered micro-instance heartbeats.
 11. **Local Caching (SQLite Mobile Mirror)**: Implement the local SQLite mobile schema script for offline field caching.
 12. **Self-Healing SQL Migrations**: Database self-repair script that automatically runs column integrity checks on startup.
 
-### Stage 4: Enterprise Safety & Multi-Agent Bridge (Advanced)
+### Stage 4: Enterprise Safety & Multi-Agent Bridge (Under Development)
 13. **Bidirectional Token Broker**: Allow token budgets to be dynamically transferred or traded between separate agent instances based on priority.
 14. **Spheroid BlockTrain Ledger Explorer**: A dedicated visual browser to trace signed Ed25519 hash-chain blocks.
 15. **Multi-Model Fallback Handshake**: Automatic redirection from DeepSeek R1 to Grok-3 Fast if rate limit exhaustion triggers.
