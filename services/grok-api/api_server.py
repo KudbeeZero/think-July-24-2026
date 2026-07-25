@@ -12,6 +12,7 @@ class ConversationRequest(BaseModel):
     message: str
     model: str = "grok-3-auto"
     extra_data: dict = None
+    is_reasoning: bool = True
 
 def format_proxy(proxy: str) -> str:
     if not proxy or not proxy.strip():
@@ -46,7 +47,7 @@ async def create_conversation(request: ConversationRequest):
     proxy = format_proxy(request.proxy) if request.proxy else None
     
     try:
-        answer: dict = Grok(request.model, proxy).start_convo(request.message, request.extra_data)
+        answer: dict = Grok(request.model, proxy).start_convo(request.message, request.extra_data, request.is_reasoning)
 
         return {
             "status": "success",

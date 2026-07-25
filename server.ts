@@ -200,8 +200,8 @@ async function startServer() {
       }
     }
 
-    // Tier 4: Inception / OpenRouter / DeepSeek / Together 10M Token Provider Fallback
-    const inceptionKey = process.env.INCEPTION_API_KEY || process.env.OPENROUTER_API_KEY || process.env.DEEPSEEK_API_KEY || process.env.TOGETHER_API_KEY;
+    // Tier 4: Inception / OpenRouter / DeepSeek ($5 balance) / Together 10M Token Provider Fallback
+    const inceptionKey = process.env.DEEPSEEK_API_KEY || process.env.INCEPTION_API_KEY || process.env.OPENROUTER_API_KEY || process.env.TOGETHER_API_KEY;
     if (inceptionKey) {
       try {
         let endpoint = 'https://openrouter.ai/api/v1/chat/completions';
@@ -209,7 +209,8 @@ async function startServer() {
 
         if (process.env.DEEPSEEK_API_KEY) {
           endpoint = 'https://api.deepseek.com/chat/completions';
-          targetModel = 'deepseek-chat';
+          // Use deepseek-reasoner or deepseek-chat based on user model selection
+          targetModel = model.includes('reasoner') || model.includes('think') ? 'deepseek-reasoner' : 'deepseek-chat';
         } else if (process.env.TOGETHER_API_KEY) {
           endpoint = 'https://api.together.xyz/v1/chat/completions';
           targetModel = 'meta-llama/Llama-3.3-70B-Instruct-Turbo';
@@ -232,12 +233,29 @@ async function startServer() {
 
         if (providerRes.ok) {
           const providerData = await providerRes.json();
-          const reply = providerData.choices?.[0]?.message?.content;
-          if (reply) {
+          const choice = providerData.choices?.[0]?.message;
+          const reply = choice?.content;
+          const reasoningContent = choice?.reasoning_content;
+          const usage = providerData.usage;
+
+          if (reply || reasoningContent) {
+            let fullResponse = reply || '';
+            if (reasoningContent) {
+              fullResponse = `🧠 **Captured Thinking Process (Reasoning Tokens)**:\n\`\`\`text\n${reasoningContent}\n\`\`\`\n\n${fullResponse}`;
+            }
+
+            // Record token telemetry in memory telemetry stream
+            telemetryStream.broadcast({
+              source: 'DeepSeek/ReasoningEngine',
+              event: `Token Usage: ${usage?.completion_tokens || 0} completion tokens | ${usage?.prompt_tokens || 0} prompt tokens | Reasoning Captured: ${reasoningContent ? 'YES' : 'NO'}`
+            });
+
             return res.json({
               status: "success",
-              response: `${reply}\n\n---\n*⚡ Powered by High-Throughput 10M Token API Provider*`,
-              mode: "inception_fallback",
+              response: `${fullResponse}\n\n---\n*⚡ Powered by DeepSeek V3/R1 Reasoning Engine ($5 Balance Active)*`,
+              mode: "deepseek_reasoning_fallback",
+              reasoning: reasoningContent || null,
+              usage: usage || null,
               extra_data
             });
           }

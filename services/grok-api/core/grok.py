@@ -12,7 +12,8 @@ class Models:
         "grok-3-auto": ["MODEL_MODE_AUTO", "auto"],
         "grok-3-fast": ["MODEL_MODE_FAST", "fast"],
         "grok-4": ["MODEL_MODE_EXPERT", "expert"],
-        "grok-4-mini-thinking-tahoe": ["MODEL_MODE_GROK_4_MINI_THINKING", "grok-4-mini-thinking"]
+        "grok-4-mini-thinking-tahoe": ["MODEL_MODE_GROK_4_MINI_THINKING", "grok-4-mini-thinking"],
+        "deepseek-reasoner": ["MODEL_MODE_EXPERT", "expert"]
     })
 
     def get_model_mode(self, model: str, index: int) -> str:
@@ -21,7 +22,6 @@ class Models:
 _Models = Models()
 
 class Grok:
-    
     
     def __init__(self, model: str = "grok-3-auto", proxy: str = None) -> None:
         self.session: requests.session.Session = requests.Session(impersonate="chrome136", default_headers=False)
@@ -112,7 +112,7 @@ class Grok:
             self.c_run += 1
         
     
-    def start_convo(self, message: str, extra_data: dict = None) -> dict:
+    def start_convo(self, message: str, extra_data: dict = None, is_reasoning: bool = True) -> dict:
         
         if not extra_data:
             self._load()
@@ -156,7 +156,7 @@ class Grok:
                 'toolOverrides': {},
                 'enableSideBySide': True,
                 'sendFinalMetadata': True,
-                'isReasoning': False,
+                'isReasoning': is_reasoning,
                 'webpageUrls': [],
                 'disableTextFollowUps': False,
                 'responseMetadata': {
@@ -175,29 +175,39 @@ class Grok:
             if "modelResponse" in convo_request.text:
                 response = conversation_id = parent_response = image_urls = None
                 stream_response: list = []
+                thinking_tokens: list = []
                 
                 for response_dict in convo_request.text.strip().split('\n'):  
-                    data: dict = loads(response_dict)
+                    try:
+                        data: dict = loads(response_dict)
 
-                    token: str = data.get('result', {}).get('response', {}).get('token')
-                    if token:
-                        stream_response.append(token)
+                        token: str = data.get('result', {}).get('response', {}).get('token')
+                        if token:
+                            stream_response.append(token)
+
+                        thinking: str = data.get('result', {}).get('response', {}).get('thinkingToken') or data.get('result', {}).get('response', {}).get('modelResponse', {}).get('thinkingMessage')
+                        if thinking:
+                            thinking_tokens.append(thinking)
+                            
+                        if not response and data.get('result', {}).get('response', {}).get('modelResponse', {}).get('message'):
+                            response: str = data['result']['response']['modelResponse']['message']
+
+                        if not conversation_id and data.get('result', {}).get('conversation', {}).get('conversationId'):
+                            conversation_id: str = data['result']['conversation']['conversationId']
+
+                        if not parent_response and data.get('result', {}).get('response', {}).get('modelResponse', {}).get('responseId'):
+                            parent_response: str = data['result']['response']['modelResponse']['responseId']
                         
-                    if not response and data.get('result', {}).get('response', {}).get('modelResponse', {}).get('message'):
-                        response: str = data['result']['response']['modelResponse']['message']
-
-                    if not conversation_id and data.get('result', {}).get('conversation', {}).get('conversationId'):
-                        conversation_id: str = data['result']['conversation']['conversationId']
-
-                    if not parent_response and data.get('result', {}).get('response', {}).get('modelResponse', {}).get('responseId'):
-                        parent_response: str = data['result']['response']['modelResponse']['responseId']
-                    
-                    if not image_urls and data.get('result', {}).get('response', {}).get('modelResponse', {}).get('generatedImageUrls', {}):
-                        image_urls: str = data['result']['response']['modelResponse']['generatedImageUrls']
-                    
+                        if not image_urls and data.get('result', {}).get('response', {}).get('modelResponse', {}).get('generatedImageUrls', {}):
+                            image_urls: str = data['result']['response']['modelResponse']['generatedImageUrls']
+                    except Exception:
+                        continue
+                
+                thinking_content = "".join(thinking_tokens) if thinking_tokens else None
                 
                 return {
                     "response": response,
+                    "thinking": thinking_content,
                     "stream_response": stream_response,
                     "images": image_urls,
                     "extra_data": {
@@ -214,7 +224,7 @@ class Grok:
                 }
             else:
                 if 'rejected by anti-bot rules' in convo_request.text:
-                    return Grok(self.session.proxies.get("all")).start_convo(message=message, extra_data=extra_data)
+                    return Grok(self.session.proxies.get("all")).start_convo(message=message, extra_data=extra_data, is_reasoning=is_reasoning)
                 elif "Grok is under heavy usage right now" in convo_request.text:
                     Log.Error("Grok is under heavy usage right now, try again later.")
                     return convo_request.json()
@@ -240,7 +250,7 @@ class Grok:
                 'enableSideBySide': True,
                 'sendFinalMetadata': True,
                 'customPersonality': '',
-                'isReasoning': False,
+                'isReasoning': is_reasoning,
                 'webpageUrls': [],
                 'metadata': {
                     'requestModelDetails': {
@@ -267,25 +277,36 @@ class Grok:
             if "modelResponse" in convo_request.text:
                 response = conversation_id = parent_response = image_urls = None
                 stream_response: list = []
+                thinking_tokens: list = []
                 
                 for response_dict in convo_request.text.strip().split('\n'):
-                    data: dict = loads(response_dict)
+                    try:
+                        data: dict = loads(response_dict)
 
-                    token: str = data.get('result', {}).get('token')
-                    if token:
-                        stream_response.append(token)
-                        
-                    if not response and data.get('result', {}).get('modelResponse', {}).get('message'):
-                        response: str = data['result']['modelResponse']['message']
+                        token: str = data.get('result', {}).get('token')
+                        if token:
+                            stream_response.append(token)
 
-                    if not parent_response and data.get('result', {}).get('modelResponse', {}).get('responseId'):
-                        parent_response: str = data['result']['modelResponse']['responseId']
-                        
-                    if not image_urls and data.get('result', {}).get('modelResponse', {}).get('generatedImageUrls', {}):
-                        image_urls: str = data['result']['modelResponse']['generatedImageUrls']
+                        thinking: str = data.get('result', {}).get('thinkingToken') or data.get('result', {}).get('modelResponse', {}).get('thinkingMessage')
+                        if thinking:
+                            thinking_tokens.append(thinking)
+                            
+                        if not response and data.get('result', {}).get('modelResponse', {}).get('message'):
+                            response: str = data['result']['modelResponse']['message']
+
+                        if not parent_response and data.get('result', {}).get('modelResponse', {}).get('responseId'):
+                            parent_response: str = data['result']['modelResponse']['responseId']
+                            
+                        if not image_urls and data.get('result', {}).get('modelResponse', {}).get('generatedImageUrls', {}):
+                            image_urls: str = data['result']['modelResponse']['generatedImageUrls']
+                    except Exception:
+                        continue
+                
+                thinking_content = "".join(thinking_tokens) if thinking_tokens else None
                 
                 return {
                     "response": response,
+                    "thinking": thinking_content,
                     "stream_response": stream_response,
                     "images": image_urls,
                     "extra_data": {
@@ -302,7 +323,7 @@ class Grok:
                 }
             else:
                 if 'rejected by anti-bot rules' in convo_request.text:
-                    return Grok(self.session.proxies.get("all")).start_convo(message=message, extra_data=extra_data)
+                    return Grok(self.session.proxies.get("all")).start_convo(message=message, extra_data=extra_data, is_reasoning=is_reasoning)
                 Log.Error("Something went wrong")
                 Log.Error(convo_request.text)
                 return {"error": convo_request.text}

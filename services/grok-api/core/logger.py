@@ -1,8 +1,19 @@
 from typing      import Optional
 from datetime    import datetime
-from colorama    import Fore
 from threading   import Lock
 from time        import time
+
+try:
+    from colorama import Fore
+except ImportError:
+    class DummyFore:
+        LIGHTGREEN_EX = ""
+        LIGHTRED_EX = ""
+        LIGHTWHITE_EX = ""
+        LIGHTBLACK_EX = ""
+        MAGENTA = ""
+        RESET = ""
+    Fore = DummyFore()
 
 
 class Log:

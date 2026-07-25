@@ -2,7 +2,7 @@
 
 > **Auto-Generated Documentation**: This outing plan is programmatically synced with `INITIAL_BEADS`, `INITIAL_AGENTS`, and `INITIAL_CONVOYS` in `src/data.ts`.
 
-**Last Sync Timestamp**: `2026-07-25T13:33:00.465Z`
+**Last Sync Timestamp**: `2026-07-25T14:33:36.307Z`
 
 ---
 

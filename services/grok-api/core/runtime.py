@@ -33,7 +33,6 @@ class Run:
         @param exception: Exception that occured
         """
         Log.Error(f"Error occurred: {exception}")
-        exit()
         
 class Utils:
     
