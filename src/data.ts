@@ -1,4 +1,4 @@
-import { Agent, Bead, Convoy } from './types';
+import { Agent, Bead, Convoy, MailItem } from './types';
 
 export const INITIAL_BEADS: Bead[] = [
   // Open (7)
@@ -119,4 +119,92 @@ export const INITIAL_CONVOYS: Convoy[] = [
     ]
   }
 ];
+
+export const INITIAL_MAIL_ITEMS: MailItem[] = [
+  {
+    id: 'm1',
+    from: 'Mayor',
+    role: 'Orchestrator',
+    subject: 'Phase 11 Convoy Staged & Ready for Dispatch',
+    preview: 'Staged convoy "System Memory Sync, Redis Deprecation & Bugfixes" with 7 beads in review-then-land mode.',
+    time: '10 mins ago',
+    unread: true,
+    severity: 'info',
+    content: `Greetings Agents,
+
+Phase 11 is now fully staged in **review-then-land mode** across all target container runtimes.
+
+The primary target of this dispatch is immediate system memory synchronization, full validation of the Drizzle Postgres database schema, and complete deprecation of the older Redis rate limiting clusters to optimize system budgets.
+
+### Key Mandates:
+1. All workers must stand by in an idle state to capture direct execution signals.
+2. Ensure live metrics are pushed directly to the dashboard's fast Redis queue.
+3. Validate memory persistence via the local seeding script.
+
+Stand tall, agents. The Mayor is watching.`,
+    diff: `+++ package.json (Dependency Hardening Remediations)
+@@ -42,3 +42,7 @@
+   "overrides": {
++    "tar": "7.5.19",
++    "postcss": "^8.5.18"
+   },
+   "dependencies": {
++    "react-router-dom": "^8.3.0"`
+  },
+  {
+    id: 'm2',
+    from: 'Toast',
+    role: 'Polecat Worker',
+    subject: 'Investigation: Persistent Black Screen Root Cause Identified',
+    preview: 'Found services/agents/worker.ts:343 shouldFail production hook still forcing failure state on root startup.',
+    time: '25 mins ago',
+    unread: true,
+    severity: 'critical',
+    content: `Mayor,
+
+My telemetry probes have successfully run static analysis across the Heroku development containers and isolated the root cause for the persistent black screen issue reported by the operators.
+
+A stubborn testing hook at \`services/agents/worker.ts:343\` called \`shouldFail\` was left set to \`true\` in production runtime configurations. This forces the container to immediately crash with an unhandled exception before the frontend UI bundle can mount.
+
+### Diagnostic Breakdown:
+- **Location**: \`services/agents/worker.ts\` around lines 341-345
+- **Symptoms**: SILENT console crashes during WebSocket handshakes, leading to a perpetual loading state.
+- **Recommended Remediation**: Remove this entire checking block entirely so the dev environment can boot smoothly.`,
+    diff: `+++ services/agents/worker.ts (Forced startup crash hook deletion)
+@@ -340,6 +340,2 @@
+- if (process.env.NODE_ENV === "production" && shouldFail) {
+-   throw new Error("Forced worker startup failure due to shouldFail hook");
+- }`
+  },
+  {
+    id: 'm3',
+    from: 'refinery',
+    role: 'Verification Agent',
+    subject: 'Security Remediation Patch Verification Summary',
+    preview: 'Remediation patch generated for tar 7.5.19 and postcss 8.5.18. Awaiting lockfile regeneration upon npm install.',
+    time: '1 hour ago',
+    unread: false,
+    severity: 'warning',
+    content: `Attention All Operators,
+
+I have executed a fully automated security and package vulnerability audit on the current lockfiles.
+
+Two package vulnerabilities have been successfully remediated by enforcing strict dependency overrides on the root workspace:
+- **tar** (upgraded to \`7.5.19\` to patch prototype pollution vectors)
+- **postcss** (upgraded to \`8.5.18\` to remediate regular expression denial of service risks)
+
+### Verification status:
+- Overrides configured: **PASSED**
+- Build check: **PENDING** lockfile regeneration upon the next execution of \`npm install\`.`,
+    diff: `+++ package.json
+@@ -52,4 +52,4 @@
+   "overrides": {
+-    "tar": "6.1.11",
+-    "postcss": "^8.4.21"
++    "tar": "7.5.19",
++    "postcss": "^8.5.18"
+   }`
+  }
+];
+
 

@@ -165,3 +165,17 @@ export interface HealthDeepStatus {
   };
 }
 
+export interface MailItem {
+  id: string;
+  from: string;
+  role: string;
+  subject: string;
+  preview: string;
+  time: string;
+  unread: boolean;
+  content?: string; // Long-form markdown content
+  diff?: string;    // Code diffs
+  severity?: 'info' | 'warning' | 'critical' | 'escalation';
+}
+
+

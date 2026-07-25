@@ -32,8 +32,8 @@ import {
   Sparkles,
   Cpu,
 } from 'lucide-react';
-import { INITIAL_BEADS, INITIAL_AGENTS, INITIAL_CONVOYS } from './data';
-import { Bead, Agent, Convoy, Status, Priority } from './types';
+import { INITIAL_BEADS, INITIAL_AGENTS, INITIAL_CONVOYS, INITIAL_MAIL_ITEMS } from './data';
+import { Bead, Agent, Convoy, Status, Priority, MailItem } from './types';
 import { NewBeadModal } from './components/NewBeadModal';
 import { BeadDetailModal } from './components/BeadDetailModal';
 import { AgentDetailModal } from './components/AgentDetailModal';
@@ -55,6 +55,8 @@ export default function App() {
   const [beads, setBeads] = useState<Bead[]>(INITIAL_BEADS);
   const [agents, setAgents] = useState<Agent[]>(INITIAL_AGENTS);
   const [convoys, setConvoys] = useState<Convoy[]>(INITIAL_CONVOYS);
+  const [mailItems, setMailItems] = useLocalStorage<MailItem[]>('mailItems', INITIAL_MAIL_ITEMS as MailItem[]);
+  const [toasts, setToasts] = useState<Array<{ id: string; title: string; desc: string; severity?: 'info' | 'warning' | 'critical' | 'escalation' }>>([]);
 
   // Reasoning Tokens State
   const [totalReasoningTokens, setTotalReasoningTokens] = useLocalStorage<number>('totalReasoningTokens', 180750);
@@ -280,6 +282,120 @@ We are **completely deprecating** the use of the \`REDIS_RATE_LIMIT_URL\` enviro
   const inProgressCount = beads.filter((b) => b.status === 'in_progress').length;
   const inReviewCount = beads.filter((b) => b.status === 'in_review').length;
   const closedCount = beads.filter((b) => b.status === 'closed').length;
+  const unreadMailCount = mailItems.filter((m) => m.unread).length;
+
+  const handleMarkMailAsRead = (id: string) => {
+    setMailItems(prev => prev.map(m => m.id === id ? { ...m, unread: false } : m));
+  };
+
+  const handleMarkAllMailAsRead = () => {
+    setMailItems(prev => prev.map(m => ({ ...m, unread: false })));
+  };
+
+  const simulateIncomingAlert = () => {
+    const alertTypes = [
+      {
+        from: 'Shadow',
+        role: 'Polecat Worker',
+        subject: 'ERR max requests limit exceeded on Upstash Redis',
+        preview: 'Redis instance has exceeded its free-tier request cap of 500,000 requests. Implementation of worker backoff fallback is urgent.',
+        severity: 'critical' as const,
+        content: `Operator,
+
+The worker containers are throwing constant \`ERR max requests limit exceeded\` exceptions against our Upstash Redis cluster. 
+
+We have hit our strict 500k monthly cap. This causes SSE heartbeats to fail instantly on production. 
+
+### Recommended Action:
+We MUST roll out the exponential backoff worker polling fix staged in PR #179 to restrict idle requests and transition to local in-memory queue backups.`,
+        diff: `+++ packages/redis-resilience/src/client.ts
+@@ -10,4 +10,12 @@
+     enableOfflineQueue: true,
++    retryStrategy(times) {
++      const delay = Math.min(times * 100, 3000);
++      return delay;
++    }`
+      },
+      {
+        from: 'Clover',
+        role: 'Polecat Worker',
+        subject: 'Memory Pipeline Seeding Verified - cosineSimilarity complete',
+        preview: 'Verified semantic memory recall in MemoryVault. Cosine similarity returning top matches with 98% accuracy.',
+        severity: 'info' as const,
+        content: `Hi team,
+
+I am excited to report that the semantic memory search tests for the \`MemoryVault\` are now **100% green**.
+
+Our vector retrieval implementation safely fallback-handles empty states, and correctly identifies similar agent thoughts under heavy parallel query load. 
+
+We are fully primed to integrate the telemetry search box!`,
+        diff: `+++ packages/kudbee-memory/src/vault.ts
+@@ -21,3 +21,5 @@
+ export function cosineSimilarity(a: number[], b: number[]): number {
+-  return dotProduct(a, b) / (magnitude(a) * magnitude(b));
++  const mag = magnitude(a) * magnitude(b);
++  if (mag === 0) return 0;
++  return dotProduct(a, b) / mag;
+ }`
+      },
+      {
+        from: 'Mayor',
+        role: 'Orchestrator',
+        subject: 'Escalation Alert: Bead b14 [Fix PCA reducer file not found] Stalled',
+        preview: 'Blocker detected! Bead b14 has been open for 4 hours without worker hook. Awaiting assignment.',
+        severity: 'escalation' as const,
+        content: `System Warning,
+
+High priority Bead **b14** has entered a stalled state. No active worker is hooked to this branch.
+
+### Blocker Context:
+- **Error**: \`Module not found: Can't resolve '../reducers/pcaReducer' in '/apps/web/src/store'\`
+- **File**: \`apps/web/src/store/index.ts\` line 24
+
+Assign this bead immediately to prevent the Phase 11 convoy from timing out.`,
+        diff: `--- apps/web/src/store/index.ts
++++ apps/web/src/store/index.ts
+-import { pcaReducer } from '../reducers/pcaReducer';
++import { pcaReducer } from './pcaReducer';`
+      }
+    ];
+
+    const randomAlert = alertTypes[Math.floor(Math.random() * alertTypes.length)];
+    const id = 'sim_' + Date.now();
+    const newMail: MailItem = {
+      id,
+      from: randomAlert.from,
+      role: randomAlert.role,
+      subject: randomAlert.subject,
+      preview: randomAlert.preview,
+      time: 'just now',
+      unread: true,
+      severity: randomAlert.severity,
+      content: randomAlert.content,
+      diff: randomAlert.diff
+    };
+
+    setMailItems(prev => [newMail, ...prev]);
+
+    // Push live feed telemetry
+    setLiveFeed(prev => [
+      {
+        msg: `ALERT [${randomAlert.from}]: ${randomAlert.subject}`,
+        time: 'just now',
+        type: randomAlert.severity === 'critical' || randomAlert.severity === 'escalation' ? 'error' : 'success'
+      },
+      ...prev
+    ]);
+
+    // Create a gorgeous sliding banner toast
+    const toastId = 'sim_toast_' + Date.now();
+    setToasts(prev => [...prev, { id: toastId, title: randomAlert.subject, desc: randomAlert.preview, severity: randomAlert.severity }]);
+    
+    // Automatically dismiss toast in 6 seconds
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== toastId));
+    }, 6000);
+  };
 
   return (
     <div className="h-[100dvh] w-full bg-[#0d1117] text-zinc-200 font-sans flex overflow-hidden relative">
@@ -388,13 +504,20 @@ We are **completely deprecating** the use of the \`REDIS_RATE_LIMIT_URL\` enviro
               setActiveNav('mail');
               setIsSidebarOpen(false);
             }}
-            className={`flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors text-left ${
+            className={`flex items-center justify-between px-3 py-2 text-sm rounded-md transition-colors text-left ${
               activeNav === 'mail'
                 ? 'text-zinc-100 bg-zinc-800/80 font-medium'
                 : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40'
             }`}
           >
-            <Mail className="w-4 h-4 text-amber-400" /> Mail
+            <span className="flex items-center gap-3">
+              <Mail className="w-4 h-4 text-amber-400" /> Mail
+            </span>
+            {unreadMailCount > 0 && (
+              <span className="px-1.5 py-0.5 text-[9px] font-bold font-mono rounded-full bg-amber-500 text-zinc-950 animate-pulse leading-none shrink-0">
+                {unreadMailCount}
+              </span>
+            )}
           </button>
 
           <button
@@ -615,7 +738,12 @@ We are **completely deprecating** the use of the \`REDIS_RATE_LIMIT_URL\` enviro
           </div>
         ) : activeNav === 'mail' ? (
           <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
-            <MailView />
+            <MailView 
+              mailItems={mailItems} 
+              onMarkAsRead={handleMarkMailAsRead} 
+              onMarkAllAsRead={handleMarkAllMailAsRead}
+              onSimulateAlert={simulateIncomingAlert}
+            />
           </div>
         ) : activeNav === 'settings' ? (
           <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
@@ -786,41 +914,56 @@ We are **completely deprecating** the use of the \`REDIS_RATE_LIMIT_URL\` enviro
       <div className="lg:hidden fixed bottom-0 inset-x-0 h-[calc(68px+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)] bg-[#0d1117]/95 backdrop-blur-lg border-t border-zinc-800/80 z-40 flex items-center justify-around px-2">
         <button 
           onClick={() => { setActiveNav('overview'); setIsSidebarOpen(false); }} 
-          className={`flex flex-col items-center justify-center w-16 h-full gap-1.5 transition-colors ${activeNav === 'overview' ? 'text-yellow-400' : 'text-zinc-500 hover:text-zinc-400'}`}
+          className={`flex flex-col items-center justify-center w-16 h-full gap-1.5 transition-colors relative ${activeNav === 'overview' ? 'text-yellow-400 font-semibold' : 'text-zinc-500 hover:text-zinc-400'}`}
         >
+          {activeNav === 'overview' && <span className="absolute top-0 inset-x-3 h-0.5 bg-yellow-400 rounded-full" />}
           <LayoutGrid className="w-5 h-5" />
           <span className="text-[9px] font-medium tracking-wide">Overview</span>
         </button>
         <button 
           onClick={() => { setActiveNav('beads'); setIsSidebarOpen(false); }} 
-          className={`flex flex-col items-center justify-center w-16 h-full gap-1.5 transition-colors relative ${activeNav === 'beads' ? 'text-blue-400' : 'text-zinc-500 hover:text-zinc-400'}`}
+          className={`flex flex-col items-center justify-center w-16 h-full gap-1.5 transition-colors relative ${activeNav === 'beads' ? 'text-blue-400 font-semibold' : 'text-zinc-500 hover:text-zinc-400'}`}
         >
+          {activeNav === 'beads' && <span className="absolute top-0 inset-x-3 h-0.5 bg-blue-400 rounded-full" />}
           <Hexagon className="w-5 h-5" />
           <span className="text-[9px] font-medium tracking-wide">Beads</span>
-          <span className="absolute top-1 right-2 w-2 h-2 bg-blue-500 rounded-full" />
+          {openCount > 0 ? (
+            <span className="absolute top-1 right-2.5 px-1 py-0.5 text-[8px] font-bold font-mono bg-red-500 text-white rounded-full leading-none scale-90">
+              {openCount}
+            </span>
+          ) : (
+            <span className="absolute top-1 right-3 w-2 h-2 bg-blue-500 rounded-full" />
+          )}
         </button>
         <button 
           onClick={() => { setActiveNav('agents'); setIsSidebarOpen(false); }} 
-          className={`flex flex-col items-center justify-center w-16 h-full gap-1.5 transition-colors ${activeNav === 'agents' ? 'text-green-400' : 'text-zinc-500 hover:text-zinc-400'}`}
+          className={`flex flex-col items-center justify-center w-16 h-full gap-1.5 transition-colors relative ${activeNav === 'agents' ? 'text-green-400 font-semibold' : 'text-zinc-500 hover:text-zinc-400'}`}
         >
+          {activeNav === 'agents' && <span className="absolute top-0 inset-x-3 h-0.5 bg-green-400 rounded-full" />}
           <Bot className="w-5 h-5" />
           <span className="text-[9px] font-medium tracking-wide">Agents</span>
         </button>
         <button 
           onClick={() => { setActiveNav('mail'); setIsSidebarOpen(false); }} 
-          className={`flex flex-col items-center justify-center w-16 h-full gap-1.5 transition-colors relative ${activeNav === 'mail' ? 'text-amber-400' : 'text-zinc-500 hover:text-zinc-400'}`}
+          className={`flex flex-col items-center justify-center w-16 h-full gap-1.5 transition-colors relative ${activeNav === 'mail' ? 'text-amber-400 font-semibold' : 'text-zinc-500 hover:text-zinc-400'}`}
         >
+          {activeNav === 'mail' && <span className="absolute top-0 inset-x-3 h-0.5 bg-amber-400 rounded-full" />}
           <Mail className="w-5 h-5" />
           <span className="text-[9px] font-medium tracking-wide">Mail</span>
-          <span className="absolute top-1 right-2 w-2 h-2 bg-yellow-500 rounded-full animate-pulse" />
+          {unreadMailCount > 0 && (
+            <span className="absolute top-1 right-2 px-1.5 py-0.5 text-[8px] font-bold font-mono bg-amber-500 text-zinc-950 rounded-full animate-pulse leading-none scale-95 shadow-[0_0_8px_rgba(245,158,11,0.4)]">
+              {unreadMailCount}
+            </span>
+          )}
         </button>
         <button 
           onClick={() => { setActiveNav('tracker'); setIsSidebarOpen(false); }} 
           className={`flex flex-col items-center justify-center w-16 h-full gap-1.5 transition-colors relative ${activeNav === 'tracker' ? 'text-[#e5ff55]' : 'text-zinc-500 hover:text-zinc-400'}`}
         >
+          {activeNav === 'tracker' && <span className="absolute top-0 inset-x-3 h-0.5 bg-[#e5ff55] rounded-full" />}
           <CheckCircle2 className="w-5 h-5" />
           <span className="text-[9px] font-medium tracking-wide">Tracker</span>
-          <span className="absolute top-1 right-2 w-2 h-2 bg-[#e5ff55] rounded-full" />
+          <span className="absolute top-1 right-3 w-1.5 h-1.5 bg-[#e5ff55] rounded-full" />
         </button>
       </div>
 
