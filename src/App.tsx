@@ -31,6 +31,7 @@ import {
   Filter,
   Sparkles,
   Cpu,
+  Brain,
 } from 'lucide-react';
 import { INITIAL_BEADS, INITIAL_AGENTS, INITIAL_CONVOYS, INITIAL_MAIL_ITEMS } from './data';
 import { Bead, Agent, Convoy, Status, Priority, MailItem } from './types';
@@ -50,13 +51,14 @@ import { OverviewView } from './components/OverviewView';
 import { BeadsView } from './components/BeadsView';
 import { McpView } from './components/McpView';
 import { SystemTrackerView } from './components/SystemTrackerView';
+import { KiloTerminalView } from './components/KiloTerminalView';
 
 export default function App() {
   const [beads, setBeads] = useState<Bead[]>(INITIAL_BEADS);
   const [agents, setAgents] = useState<Agent[]>(INITIAL_AGENTS);
   const [convoys, setConvoys] = useState<Convoy[]>(INITIAL_CONVOYS);
   const [mailItems, setMailItems] = useLocalStorage<MailItem[]>('mailItems', INITIAL_MAIL_ITEMS as MailItem[]);
-  const [toasts, setToasts] = useState<Array<{ id: string; title: string; desc: string; severity?: 'info' | 'warning' | 'critical' | 'escalation' }>>([]);
+  const [toasts, setToasts] = useLocalStorage<Array<{ id: string; title: string; desc: string; severity?: 'info' | 'warning' | 'critical' | 'escalation' }>>('appToasts', []);
 
   // Reasoning Tokens State
   const [totalReasoningTokens, setTotalReasoningTokens] = useLocalStorage<number>('totalReasoningTokens', 180750);
@@ -564,6 +566,25 @@ Assign this bead immediately to prevent the Phase 11 convoy from timing out.`,
 
           <button
             onClick={() => {
+              setActiveNav('kilo-terminal');
+              setIsSidebarOpen(false);
+            }}
+            className={`flex items-center justify-between px-3 py-2 text-sm rounded-md transition-colors text-left ${
+              activeNav === 'kilo-terminal'
+                ? 'text-zinc-100 bg-zinc-800/80 font-medium'
+                : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40'
+            }`}
+          >
+            <span className="flex items-center gap-3">
+              <Brain className="w-4 h-4 text-yellow-400" /> KILO Token & Limits
+            </span>
+            <span className="text-[9px] uppercase font-mono px-1.5 py-0.5 rounded bg-yellow-500/25 text-yellow-400 font-bold border border-yellow-500/10">
+              Live API
+            </span>
+          </button>
+
+          <button
+            onClick={() => {
               setIsGrokTerminalOpen(!isGrokTerminalOpen);
               setIsSidebarOpen(false);
             }}
@@ -661,20 +682,21 @@ Assign this bead immediately to prevent the Phase 11 convoy from timing out.`,
       {/* Main Container */}
       <div className="flex-1 flex flex-col min-w-0 h-full">
         {/* Header */}
-        <header className="flex items-center justify-between px-3 sm:px-6 py-3 sm:py-4 border-b border-zinc-800/60 bg-[#0d1117]/80 backdrop-blur-md h-14 sm:h-16 shrink-0 sticky top-0 z-30">
-          <div className="flex items-center gap-2 sm:gap-3">
+        <header className="flex items-center justify-between px-2 sm:px-6 py-3 sm:py-4 border-b border-zinc-800/60 bg-[#0d1117]/80 backdrop-blur-md h-14 sm:h-16 shrink-0 sticky top-0 z-30">
+          <div className="flex items-center gap-1 sm:gap-2 min-w-0">
             <button
               onClick={() => setIsSidebarOpen(true)}
-              className="lg:hidden p-2 -ml-2 text-zinc-400 hover:text-zinc-200 active:scale-95 transition-transform"
+              className="lg:hidden p-1.5 sm:p-2 -ml-1 text-zinc-400 hover:text-zinc-200 active:scale-95 transition-transform"
             >
               <Menu className="w-5 sm:w-6 h-5 sm:h-6" />
             </button>
 
-            <h1 className="text-zinc-100 font-semibold text-[13px] sm:text-base flex items-center gap-2 sm:gap-3 truncate">
+            <h1 className="text-zinc-100 font-semibold text-[12px] sm:text-base flex items-center gap-1 sm:gap-2 truncate min-w-0">
               <div className="w-4 h-4 sm:w-5 sm:h-5 rounded-sm border border-zinc-600 flex items-center justify-center bg-zinc-800 shrink-0">
                 <div className="w-2 h-2 sm:w-2.5 sm:h-2.5 rounded-sm border border-zinc-400" />
               </div>
-              <span className="truncate">Kudbee-fuel-gage</span>
+              <span className="hidden xs:inline sm:hidden truncate font-bold">Kudbee</span>
+              <span className="hidden sm:inline truncate">Kudbee-fuel-gage</span>
               <span className="hidden md:flex items-center gap-1.5 text-xs font-normal text-zinc-400">
                 <GitBranch className="w-3.5 h-3.5" />
                 main
@@ -682,7 +704,7 @@ Assign this bead immediately to prevent the Phase 11 convoy from timing out.`,
             </h1>
           </div>
 
-          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+          <div className="flex items-center gap-1 sm:gap-2 shrink-0">
             <ThinkTokenMeter
               totalReasoningTokens={totalReasoningTokens}
               onOpenTerminal={() => setIsGrokTerminalOpen(true)}
@@ -690,7 +712,7 @@ Assign this bead immediately to prevent the Phase 11 convoy from timing out.`,
 
             <button
               onClick={() => setIsGrokTerminalOpen(!isGrokTerminalOpen)}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all border ${
+              className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs sm:text-sm font-semibold transition-all border ${
                 isGrokTerminalOpen
                   ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50 shadow-[0_0_12px_rgba(234,179,8,0.2)]'
                   : 'bg-zinc-800/80 text-zinc-300 border-zinc-700/80 hover:bg-zinc-700/80 hover:text-yellow-400'
@@ -703,7 +725,7 @@ Assign this bead immediately to prevent the Phase 11 convoy from timing out.`,
 
             <button
               onClick={() => setShowTerminalMobile(!showTerminalMobile)}
-              className="xl:hidden p-2 text-zinc-400 hover:text-yellow-400 active:scale-95 transition-all bg-zinc-800/50 rounded-lg border border-zinc-700/50"
+              className="xl:hidden p-1.5 text-zinc-400 hover:text-yellow-400 active:scale-95 transition-all bg-zinc-800/50 rounded-lg border border-zinc-700/50 shrink-0"
               title="Toggle Terminal Panel"
             >
               <TerminalIcon className="w-4 h-4 sm:w-4.5 sm:h-4.5" />
@@ -711,16 +733,20 @@ Assign this bead immediately to prevent the Phase 11 convoy from timing out.`,
 
             <button
               onClick={() => setIsNewBeadOpen(true)}
-              className="flex items-center gap-1.5 bg-[#e5ff55] hover:bg-[#d4ed44] text-zinc-950 font-semibold px-3 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm transition-colors shadow-sm"
+              className="flex items-center gap-1 bg-[#e5ff55] hover:bg-[#d4ed44] text-zinc-950 font-semibold px-2.5 sm:px-4 py-1.5 rounded-lg text-xs sm:text-sm transition-colors shadow-sm shrink-0"
             >
-              <Plus className="w-4 h-4" />
+              <Plus className="w-4.5 h-4.5 sm:w-4 sm:h-4" />
               <span className="hidden sm:inline">New Bead</span>
             </button>
           </div>
         </header>
 
         {/* View Switcher Output */}
-        {activeNav === 'tracker' ? (
+        {activeNav === 'kilo-terminal' ? (
+          <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <KiloTerminalView totalReasoningTokens={totalReasoningTokens} setTotalReasoningTokens={setTotalReasoningTokens} />
+          </div>
+        ) : activeNav === 'tracker' ? (
           <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
             <SystemTrackerView />
           </div>
@@ -957,6 +983,14 @@ Assign this bead immediately to prevent the Phase 11 convoy from timing out.`,
           )}
         </button>
         <button 
+          onClick={() => { setActiveNav('kilo-terminal'); setIsSidebarOpen(false); }} 
+          className={`flex flex-col items-center justify-center w-16 h-full gap-1.5 transition-colors relative ${activeNav === 'kilo-terminal' ? 'text-yellow-400 font-semibold' : 'text-zinc-500 hover:text-zinc-400'}`}
+        >
+          {activeNav === 'kilo-terminal' && <span className="absolute top-0 inset-x-3 h-0.5 bg-yellow-400 rounded-full" />}
+          <Brain className="w-5 h-5 text-yellow-400" />
+          <span className="text-[9px] font-medium tracking-wide">Console</span>
+        </button>
+        <button 
           onClick={() => { setActiveNav('tracker'); setIsSidebarOpen(false); }} 
           className={`flex flex-col items-center justify-center w-16 h-full gap-1.5 transition-colors relative ${activeNav === 'tracker' ? 'text-[#e5ff55]' : 'text-zinc-500 hover:text-zinc-400'}`}
         >
@@ -971,7 +1005,12 @@ Assign this bead immediately to prevent the Phase 11 convoy from timing out.`,
       <KudbeeTerminal
         isOpen={isGrokTerminalOpen}
         onClose={() => setIsGrokTerminalOpen(false)}
+        beads={beads}
+        onUpdateBeadStatus={handleUpdateBeadStatus}
+        onUpdateBeadAssignee={handleUpdateBeadAssignee}
         onAddBead={handleAddBead}
+        agents={agents}
+        convoys={convoys}
       />
     </div>
   );
