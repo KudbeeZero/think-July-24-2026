@@ -2,12 +2,41 @@ import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import dotenv from "dotenv";
+import { AgentEngine } from "./src/server/engine";
+import { connectRedis, mainRedisClient, agentRedisClient } from "./src/server/redis";
+import { db } from "./src/db/main";
+import { agentDb } from "./src/db/agent";
 
 dotenv.config();
 
+const engine = new AgentEngine();
+
+async function startAgentWorker(agentName: string) {
+  await connectRedis();
+  console.log(`[Worker] Started isolated agent environment for: ${agentName}`);
+  console.log(`[Worker] Using Groq Key: ${process.env.GROQ_API_KEY ? 'Set' : 'Unset'}`);
+  console.log(`[Worker] Using Inception Key: ${process.env.INCEPTION_API_KEY ? 'Set' : 'Unset'}`);
+  
+  // Here we would implement the specific worker polling logic against the queue
+  // For now, we simulate a standalone worker polling the agentRedisClient
+  
+  setInterval(async () => {
+    try {
+      // Simulate polling a queue
+      // const job = await agentRedisClient.brPop('agent_queue', 10);
+      console.log(`[${agentName}] Polling for tasks...`);
+    } catch (e) {
+      console.error(`[${agentName}] Error in worker loop`, e);
+    }
+  }, 5000);
+}
+
 async function startServer() {
+  await connectRedis();
+  engine.start();
+
   const app = express();
-  const PORT = process.env.PORT || 3000;
+  const PORT = 3000;
 
   // Middleware for parsing JSON
   app.use(express.json());
@@ -17,11 +46,50 @@ async function startServer() {
     res.json({ status: "ok", timestamp: new Date().toISOString() });
   });
 
-  // Mock telemetry endpoint for UI
+  // Client connected clients for SSE
+  let clients: any[] = [];
+
+  // Listen to engine logs and broadcast to all connected SSE clients
+  engine.on('log', (logEntry) => {
+    const data = JSON.stringify(logEntry);
+    clients.forEach(client => {
+      client.res.write(`data: ${data}\n\n`);
+    });
+  });
+
+  // Server-Sent Events endpoint for real-time telemetry
+  app.get("/api/telemetry/stream", (req, res) => {
+    res.setHeader('Content-Type', 'text/event-stream');
+    res.setHeader('Cache-Control', 'no-cache');
+    res.setHeader('Connection', 'keep-alive');
+    res.flushHeaders();
+
+    const clientId = Date.now();
+    const newClient = { id: clientId, res };
+    clients.push(newClient);
+
+    // Send an initial connected message
+    res.write(`data: ${JSON.stringify({ source: 'System', event: 'Connected to Kilo Agent Engine Telemetry' })}\n\n`);
+
+    req.on('close', () => {
+      clients = clients.filter(client => client.id !== clientId);
+    });
+  });
+
+  // Endpoint to submit a task to the agents
+  app.post("/api/agents/task", (req, res) => {
+    const { type, payload } = req.body;
+    if (!type) {
+      return res.status(400).json({ error: "Task type required" });
+    }
+    engine.submitTask(type, payload || {});
+    res.json({ success: true, message: `Task ${type} submitted` });
+  });
+
+  // Mock telemetry endpoint for UI (legacy)
   app.post("/api/telemetry/ingest", (req, res) => {
-    // In production, this would validate payload and push to Redis/Postgres
     const { event, source } = req.body;
-    console.log(`[Telemetry] ${source}: ${event}`);
+    engine.emit('log', { source: source || 'UI', event });
     res.json({ success: true });
   });
 
@@ -47,6 +115,16 @@ async function startServer() {
   });
 }
 
-startServer().catch((err) => {
-  console.error("Failed to start server:", err);
-});
+const args = process.argv.slice(2);
+const agentArg = args.find(arg => arg.startsWith('--agent='));
+
+if (agentArg) {
+  const agentName = agentArg.split('=')[1];
+  startAgentWorker(agentName).catch(err => {
+    console.error(`Failed to start agent ${agentName}:`, err);
+  });
+} else {
+  startServer().catch((err) => {
+    console.error("Failed to start server:", err);
+  });
+}

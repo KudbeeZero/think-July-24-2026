@@ -1,0 +1,71 @@
+version: '3.8'
+
+services:
+  web:
+    build: .
+    ports:
+      - "3000:3000"
+    environment:
+      - NODE_ENV=production
+      - PORT=3000
+      - DATABASE_URL=${DATABASE_URL}
+      - AGENT_DATABASE_URL=${AGENT_DATABASE_URL}
+      - REDIS_URL=redis://main-redis:6379
+      - AGENT_REDIS_URL=redis://agent-redis:6379
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - INCEPTION_API_KEY=${INCEPTION_API_KEY}
+    depends_on:
+      - main-redis
+      - agent-redis
+
+  agent-mayor:
+    build: .
+    command: node dist/server.cjs --agent=mayor
+    environment:
+      - NODE_ENV=production
+      - AGENT_NAME=Mayor
+      - AGENT_ROLE=orchestrator
+      - AGENT_DATABASE_URL=${AGENT_DATABASE_URL}
+      - AGENT_REDIS_URL=redis://agent-redis:6379
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - INCEPTION_API_KEY=${INCEPTION_API_KEY}
+    depends_on:
+      - agent-redis
+
+  agent-toast:
+    build: .
+    command: node dist/server.cjs --agent=toast
+    environment:
+      - NODE_ENV=production
+      - AGENT_NAME=Toast
+      - AGENT_ROLE=worker
+      - AGENT_DATABASE_URL=${AGENT_DATABASE_URL}
+      - AGENT_REDIS_URL=redis://agent-redis:6379
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - INCEPTION_API_KEY=${INCEPTION_API_KEY}
+    depends_on:
+      - agent-redis
+
+  agent-refinery:
+    build: .
+    command: node dist/server.cjs --agent=refinery
+    environment:
+      - NODE_ENV=production
+      - AGENT_NAME=Refinery
+      - AGENT_ROLE=verifier
+      - AGENT_DATABASE_URL=${AGENT_DATABASE_URL}
+      - AGENT_REDIS_URL=redis://agent-redis:6379
+      - GROQ_API_KEY=${GROQ_API_KEY}
+      - INCEPTION_API_KEY=${INCEPTION_API_KEY}
+    depends_on:
+      - agent-redis
+
+  main-redis:
+    image: redis:alpine
+    ports:
+      - "6379:6379"
+
+  agent-redis:
+    image: redis:alpine
+    ports:
+      - "6380:6379"

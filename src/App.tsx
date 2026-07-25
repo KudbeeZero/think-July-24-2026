@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useLocalStorage } from './hooks/useLocalStorage';
 import {
   PanelLeft,
@@ -67,6 +67,39 @@ export default function App() {
   // Terminal Copy Feedback
   const [promptCopied, setPromptCopied] = useState(false);
 
+  // Live Telemetry Feed
+  const [liveFeed, setLiveFeed] = useState<Array<{msg: string, time: string, type: string}>>([]);
+  const eventSourceRef = useRef<EventSource | null>(null);
+
+  useEffect(() => {
+    // Advanced Upgrade 4: Fallback HTTP long-polling/SSE for WebSocket telemetry
+    eventSourceRef.current = new EventSource('/api/telemetry/stream');
+    
+    eventSourceRef.current.onmessage = (event) => {
+      try {
+        const data = JSON.parse(event.data);
+        const type = data.source === 'System' ? 'success' : (data.source === 'User' ? 'user' : 'agent');
+        
+        setLiveFeed(prev => {
+          const newEntry = {
+            msg: `[${data.source}] ${data.event}`,
+            time: 'just now',
+            type
+          };
+          return [newEntry, ...prev].slice(0, 50); // Keep last 50 events
+        });
+      } catch (err) {
+        console.error('Failed to parse SSE data:', err);
+      }
+    };
+
+    return () => {
+      if (eventSourceRef.current) {
+        eventSourceRef.current.close();
+      }
+    };
+  }, []);
+
   const KILO_PROMPT_TEXT = `# 🎯 MISSION: System Memory Sync & Autonomous Rate Limiter Refactor
 
 **Context:** 
@@ -104,13 +137,24 @@ We are **completely deprecating** the use of the \`REDIS_RATE_LIMIT_URL\` enviro
   };
 
   // Handlers for Beads
-  const handleAddBead = (newBeadData: Omit<Bead, 'id' | 'createdAt'>) => {
+  const handleAddBead = async (newBeadData: Omit<Bead, 'id' | 'createdAt'>) => {
     const newBead: Bead = {
       ...newBeadData,
       id: `b${Date.now()}`,
       createdAt: 'just now',
     };
     setBeads([newBead, ...beads]);
+
+    // Send task to the backend agent engine
+    try {
+      await fetch('/api/agents/task', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: newBeadData.title, payload: newBeadData })
+      });
+    } catch (e) {
+      console.error('Failed to submit task to agent engine:', e);
+    }
   };
 
   const handleUpdateBeadStatus = (beadId: string, newStatus: Status) => {
@@ -428,7 +472,7 @@ We are **completely deprecating** the use of the \`REDIS_RATE_LIMIT_URL\` enviro
         {/* View Switcher Output */}
         {activeNav === 'observability' ? (
           <div className="flex-1 overflow-y-auto pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-0">
-            <ObservabilityView />
+            <ObservabilityView liveFeed={liveFeed} />
           </div>
         ) : activeNav === 'merge_queue' ? (
           <div className="flex-1 overflow-y-auto pb-[calc(5rem+env(safe-area-inset-bottom))] lg:pb-0">
@@ -508,16 +552,16 @@ We are **completely deprecating** the use of the \`REDIS_RATE_LIMIT_URL\` enviro
                   <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
                 </div>
                 <div className="flex-1 overflow-y-auto divide-y divide-zinc-800/40 custom-scrollbar">
-                  {[
-                    { msg: 'Bead created: Run npm install, update lockfile', time: 'less than a minute ago' },
-                    { msg: 'Bead created: Apply security deps (tar, postcss)', time: 'less than a minute ago' },
-                    { msg: 'Bead created: Fix black screen by removing shouldFail', time: '1 min ago' },
-                    { msg: 'Bead created: Implement robust in-memory sliding window', time: '2 mins ago' },
-                    { msg: 'Bead created: Remove all REDIS_RATE_LIMIT_URL', time: '3 mins ago' },
-                    { msg: 'Bead created: Update memory files with PR history', time: '5 mins ago' },
+                  {(liveFeed.length > 0 ? liveFeed : [
+                    { msg: 'Bead created: Run npm install, update lockfile', time: 'less than a minute ago', type: 'system' },
+                    { msg: 'Bead created: Apply security deps (tar, postcss)', time: 'less than a minute ago', type: 'system' },
+                    { msg: 'Bead created: Fix black screen by removing shouldFail', time: '1 min ago', type: 'system' },
+                    { msg: 'Bead created: Implement robust in-memory sliding window', time: '2 mins ago', type: 'system' },
+                    { msg: 'Bead created: Remove all REDIS_RATE_LIMIT_URL', time: '3 mins ago', type: 'system' },
+                    { msg: 'Bead created: Update memory files with PR history', time: '5 mins ago', type: 'system' },
                     { msg: 'Agent Toast hooked bead Phase 11 Sync', time: '10 mins ago', type: 'agent' },
                     { msg: 'Review merged by refinery', time: '1 hour ago', type: 'success' },
-                  ].map((f, i) => (
+                  ]).map((f, i) => (
                     <div key={i} className="px-4 py-3 hover:bg-zinc-800/30 cursor-pointer flex items-center justify-between gap-3 group">
                       <div className="flex items-start gap-2 overflow-hidden">
                         {f.type === 'agent' ? (

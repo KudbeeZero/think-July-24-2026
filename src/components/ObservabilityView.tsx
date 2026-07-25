@@ -1,17 +1,33 @@
 import React, { useState } from 'react';
 import { Activity, Cpu, HardDrive, Zap, RefreshCw, AlertTriangle, CheckCircle2, Database, ShieldCheck } from 'lucide-react';
 
-export function ObservabilityView() {
+export function ObservabilityView({ liveFeed = [] }: { liveFeed?: Array<{msg: string, time: string, type: string}> }) {
   const [timeRange, setTimeRange] = useState('24h');
   const [filterType, setFilterType] = useState('all');
 
-  const telemetryEvents = [
+  const defaultTelemetryEvents = [
     { id: '1', time: '01:38:12', type: 'INFO', source: 'services/agents/worker.ts', message: 'Worker loop cycle executed. Memory vault similarity score: 0.94' },
     { id: '2', time: '01:35:40', type: 'WARN', source: 'services/ingestion/server.js', message: 'REDIS_RATE_LIMIT_URL deprecated. Failing open with in-memory sliding window fallback.' },
     { id: '3', time: '01:32:05', type: 'INFO', source: 'apps/web/server.ts', message: 'Auth token verified. User twd4lifez@gmail.com connected to WebSocket telemetry.' },
     { id: '4', time: '01:28:19', type: 'SUCCESS', source: 'seed-memory.ts', message: 'Live memory pipeline seeded. 21 vector embeddings initialized in MemoryVault.' },
     { id: '5', time: '01:20:00', type: 'INFO', source: 'refinery/verifier', message: 'E2E test suite passed (21/21 passing). Build status clean.' },
   ];
+
+  const displayFeed = liveFeed.length > 0 
+    ? liveFeed.map((evt, idx) => {
+        // Parse the raw SSE message like "[System] Agent Mayor..."
+        const match = evt.msg.match(/^\[(.*?)\] (.*)$/);
+        const source = match ? match[1] : 'System';
+        const message = match ? match[2] : evt.msg;
+        return {
+          id: `live-${idx}`,
+          time: new Date().toLocaleTimeString(),
+          type: evt.type === 'success' ? 'SUCCESS' : 'INFO',
+          source,
+          message
+        };
+      })
+    : defaultTelemetryEvents;
 
   return (
     <div className="p-6 space-y-6 max-w-7xl mx-auto">
@@ -127,7 +143,7 @@ export function ObservabilityView() {
           <span className="text-[10px] text-zinc-500 font-mono">5 events captured</span>
         </div>
         <div className="divide-y divide-zinc-800/60 font-mono text-xs">
-          {telemetryEvents.map((evt) => (
+          {displayFeed.map((evt) => (
             <div key={evt.id} className="p-3 hover:bg-zinc-800/30 flex items-start gap-3">
               <span className="text-zinc-500 text-[11px] shrink-0">{evt.time}</span>
               <span
