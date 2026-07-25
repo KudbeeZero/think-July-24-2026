@@ -42,22 +42,29 @@ When generating prompts or instructions for the Kilo Cloud Agent, you MUST adher
 
 ---
 
-# Current Kudbee State & Memory (Post PR #179)
+# Current Kudbee State & Memory (Post PR #181)
 
-**Context**: PR #179 (`feat/kudbee-telemetry-ops-and-mobile`) completed (22 commits, 75/75 tests passing, 36/36 E2E passing). Next focus is Upstash Redis request backoff, worker loop resilience, and 20+ commit campaign.
+**Context**: PR #181 (`feat/kudbee-memory-seeding-and-mcp`) completed (22+ commits, E2E/Unit tests passing). The agent successfully implemented the live memory seeding pipeline (`seed-memory.ts`), `MemoryVault`, semantic recall, and UI components. Next focus is fixing the ingestion server rate limiter crash causing the deployment black screen.
 - **Model / Environment**: DeepSeek V4 (1M token context window). High efficiency & context retention.
-- **Current Status**: All 11 monorepo packages lint and typecheck green. Tests passing. Upstash Redis request limit handling required.
+- **Current Status**: All 12 monorepo packages lint and typecheck green. E2E tests passing.
 
 **Current Codebase State (What is done & fully verified)**:
-- ✅ `packages/opencode/src/kilocode/kudbee/` safe-zone namespace complete with native tools and upstream trajectory interceptor.
-- ✅ Agent Dashboard UI & Centralized Zustand Store (`useControlTowerStore.ts`) in `apps/web`.
-- ✅ Mobile Zustand Bridge & SQLite Cache in `@kudbee/mobile` (`useMobileTelemetryStore.ts`, `sqliteCache.ts`, `useMobileTelemetrySync.ts`).
-- ✅ Sentinel Firewall Engine (`rateLimiter.ts`, `circuitBreaker.ts`, `anomalyEngine.ts`).
-- ✅ Heroku postbuild script & lockfile synchronization verified.
-- ❌ **URGENT**: Upstash Redis request limit exhaustion (`ERR max requests limit exceeded`). Workers spin infinitely on `brpop` errors without backoff.
+- ✅ Redis resilience: URL sanitizer (`https` -> `rediss://`), exponential backoff, circuit breaker.
+- ✅ Memory Pipeline: `MemoryVault` with storage, context window, and `semanticRecall` (cosine similarity) fully verified with 21 passing tests.
+- ✅ Live Memory Seeding: `seed-memory.ts` script created, tests passing.
+- ✅ Agent Native Tools & UI: `kudbee_store_memory` integrated, `MemoryPipelineView` desktop/mobile synced.
+- ✅ **URGENT DIAGNOSIS (Black Screen on Heroku)**: The rate limiter middleware blocking the root `/` page load is actively being worked on and patched by a Kilo Agent ("Toast").
 
-**Next Scope & Strategic Features (Phase 4: Upstash Redis Rate-Limit Backoff, Worker Resilience, & Extended PR Commit Campaign)**:
-1. **Upstash Redis Request Backoff & Error Handler**: Catch `ERR max requests limit exceeded` in worker loops (`brpop`, polling), trigger an automated 10s–30s backoff pause, and switch worker loops to in-memory local fallback queues.
-2. **Sentinel Upstash Adaptive Circuit Breaker**: Auto-trip Sentinel circuit breaker when Redis reports quota exhaustion, silencing outbound polling until quota window resets.
-3. **Commit Campaign Discipline**: Keep PR open and append at least 20 incremental, sub-task commits per PR cycle before submitting for final review.
+**Next Scope & Strategic Features (Phase 6: Ingestion Server Hardening & Fail-Open Rate Limiter)**:
+1. **Fix Ingestion Server Black Screen**: Agent "Toast" (Polecat) is modifying `services/ingestion/server.js` to add `/` and static assets to the exclusion list and wrapping the Redis rate-limit check in a `try/catch` to fail-open. 
+   - **Root Cause Identified by Mayor**: `/api/telemetry/poll` and `/api/telemetry/ingest` share the same `apiLimiter` (100 req/min). Polling burns the budget rapidly, resulting in 429s that cause the frontend components to fail silently. Furthermore, the Redis rate limiter currently has no in-memory fallback and the `MiddlewareGuard` wrapper was created but never wired.
+   - **Staged Convoy Fixes**: Fix in-memory rate limiting, wire `MiddlewareGuard`, add in-memory sliding window, and harden rateLimit config.
+2. **Ingestion Redis URL Sanitization**: Apply the same `https://` to `rediss://` sanitization logic to `REDIS_RATE_LIMIT_URL` in the ingestion server.
+3. **Commit Campaign Discipline**: Agent is actively committing to the current PR pipeline.
+
+---
+
+# Kilo Platform Capabilities & Architecture Context
+- **System Architecture**: The system utilizes a "Mayor" (Orchestrator) and "Polecat" agents (workers) acting on "Beads" (tickets) organized into "Convoys" (multi-step tasks).
+- **Agent Autonomy**: **Agents have the capability to independently spin up and provision their own REDIS databases** on top of the existing infrastructure as needed. If resource limits or quotas (like the Upstash 500k limit) impede progress, the agent can autonomously build out independent database resources to circumvent these blockers.
 
