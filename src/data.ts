@@ -63,57 +63,6 @@ export const INITIAL_AGENTS: Agent[] = [
     skills: ['Fail-Open Rate Limiter', 'Middleware Guard Routing', 'Upstash Redis Fallback'],
     plugins: ['Redis Exponential Backoff', 'Upstash Resiliency Shield'],
     tags: ['Resilient-Pipe', 'Fail-Open', 'Rate-Limiter']
-  },
-  { 
-    id: 'a3', 
-    name: 'Maple', 
-    role: 'polecat', 
-    status: 'idle', 
-    lastActive: 'standing by', 
-    icon: 'robot',
-    model: 'deepseek-reasoner',
-    reasoningTokensSpent: 31520,
-    promptTokensSpent: 89100,
-    completionTokensSpent: 21400,
-    totalTasksCompleted: 12,
-    temperature: 0.1,
-    skills: ['Memory Pipeline Seeding', 'Semantic Cosine Recall', 'Persistent Local Storage'],
-    plugins: ['MemoryVault SQLite Core', 'Vector Retrieval Index'],
-    tags: ['Cognitive-Trace', 'Semantic-Recall', 'Local-Memory']
-  },
-  { 
-    id: 'a4', 
-    name: 'Shadow', 
-    role: 'polecat', 
-    status: 'idle', 
-    lastActive: 'standing by', 
-    icon: 'robot',
-    model: 'grok-3-fast',
-    reasoningTokensSpent: 15800,
-    promptTokensSpent: 45000,
-    completionTokensSpent: 11200,
-    totalTasksCompleted: 8,
-    temperature: 0.2,
-    skills: ['Google Maps Geolocation', 'Interactive Store Locators', 'Dynamic Routes API'],
-    plugins: ['Places Autocomplete Widget', 'Google Maps JS SDK'],
-    tags: ['Maps-Widget', 'Directions-Route', 'Geocoding']
-  },
-  { 
-    id: 'a5', 
-    name: 'Clover', 
-    role: 'polecat', 
-    status: 'idle', 
-    lastActive: 'standing by', 
-    icon: 'robot',
-    model: 'deepseek-reasoner',
-    reasoningTokensSpent: 22100,
-    promptTokensSpent: 61000,
-    completionTokensSpent: 15400,
-    totalTasksCompleted: 9,
-    temperature: 0.25,
-    skills: ['OAuth Popup Handlers', 'Firebase Auth Security Rules', 'State Sync Reconciliation'],
-    plugins: ['OAuth Authentication Gateway', 'Firebase Client Adapter'],
-    tags: ['OAuth-Flow', 'Firestore-Rules', 'Session-Sync']
   }
 ];
 

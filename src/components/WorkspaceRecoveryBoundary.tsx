@@ -45,65 +45,35 @@ export class WorkspaceRecoveryBoundary extends (React.Component as any) {
 
     if (s.hasError) {
       return (
-        <div className="fixed inset-0 z-50 bg-[#090d13] text-zinc-100 flex flex-col items-center justify-center p-6 font-mono">
-          <div className="max-w-xl w-full bg-[#161b22] border border-red-500/40 rounded-2xl p-6 shadow-2xl relative overflow-hidden">
-            <div className="absolute top-0 right-0 p-4 opacity-10">
-              <Cpu className="w-32 h-32 text-red-500" />
+        <div className="fixed inset-0 z-50 bg-black flex items-center justify-center p-6 font-mono text-emerald-500">
+          <div className="w-full max-w-lg bg-zinc-950 border border-emerald-900 rounded-lg p-6 shadow-[0_0_20px_rgba(16,185,129,0.1)]">
+            <div className="flex items-center gap-3 border-b border-emerald-900 pb-4 mb-4">
+              <div className="w-3 h-3 rounded-full bg-emerald-500 animate-pulse" />
+              <h2 className="text-sm font-bold uppercase tracking-widest text-emerald-400">
+                TERMINAL SAFETY PERIMETER: INTERCEPT ACTIVE
+              </h2>
             </div>
-
-            <div className="flex items-center gap-3 mb-4 text-red-400">
-              <div className="p-2.5 rounded-xl bg-red-500/10 border border-red-500/30">
-                <ShieldAlert className="w-6 h-6" />
+            
+            <div className="space-y-4">
+              <div className="text-[10px] text-emerald-700">
+                [KERNEL_EXCEPTION_LOGGED] {new Date().toISOString()}
               </div>
-              <div>
-                <h1 className="text-base font-bold tracking-wide uppercase text-zinc-100">
-                  Suboxone Terminal Safety Perimeter
-                </h1>
-                <p className="text-xs text-red-400">WorkspaceRecoveryBoundary Intercept Active</p>
+              <div className="text-xs bg-black p-3 rounded border border-emerald-900 overflow-x-auto">
+                <span className="text-red-500 font-bold">ERROR:</span> {s.error?.toString()}
               </div>
+              
+              <p className="text-xs text-emerald-400 leading-relaxed">
+                The KUD-THINK unbreakable kernel has protected state integrity by isolating 
+                the corrupted workspace frame.
+              </p>
             </div>
 
-            <div className="bg-[#0d1117] border border-zinc-800 rounded-xl p-4 mb-6">
-              <div className="flex items-center justify-between text-xs text-zinc-400 mb-2 border-b border-zinc-800 pb-1.5">
-                <span className="flex items-center gap-1.5 text-yellow-400">
-                  <AlertTriangle className="w-3.5 h-3.5" />
-                  Kernel Exception Logged
-                </span>
-                <span className="text-[10px] text-zinc-500">{new Date().toISOString()}</span>
-              </div>
-              <pre className="text-xs text-red-300 font-mono overflow-x-auto whitespace-pre-wrap break-words">
-                {s.error?.toString() || 'Unknown Kernel Corrupt State'}
-              </pre>
-              {s.errorInfo && (
-                <div className="mt-3 pt-2 border-t border-zinc-800/80">
-                  <p className="text-[10px] text-zinc-500 mb-1">Component Stack Trace:</p>
-                  <pre className="text-[10px] text-zinc-400 font-mono max-h-32 overflow-y-auto whitespace-pre-wrap">
-                    {s.errorInfo.componentStack}
-                  </pre>
-                </div>
-              )}
-            </div>
-
-            <p className="text-xs text-zinc-400 mb-6 leading-relaxed">
-              The KUD-THINK unbreakable kernel protected state integrity by isolating the corrupted workspace frame. Choose an action to restore state synchronization.
-            </p>
-
-            <div className="flex flex-col sm:flex-row items-center gap-3">
-              <button
-                onClick={this.handleRetry}
-                className="w-full sm:w-auto flex-1 px-4 py-2.5 bg-yellow-500 hover:bg-yellow-400 text-black font-semibold text-xs rounded-xl flex items-center justify-center gap-2 transition-colors shadow-md"
-              >
-                <RotateCcw className="w-4 h-4" />
-                Retry Workspace State
-              </button>
-              <button
-                onClick={this.handleHardReload}
-                className="w-full sm:w-auto flex-1 px-4 py-2.5 bg-zinc-800 hover:bg-zinc-700 text-zinc-200 font-semibold text-xs rounded-xl border border-zinc-700 flex items-center justify-center gap-2 transition-colors"
-              >
-                <RefreshCw className="w-4 h-4 text-zinc-400" />
-                Hard Kernel Reload
-              </button>
-            </div>
+            <button
+              onClick={this.handleRetry}
+              className="mt-6 w-full py-2 bg-emerald-900/30 border border-emerald-700 hover:bg-emerald-800/40 text-emerald-400 text-xs uppercase tracking-wider font-bold transition-colors"
+            >
+              Initialize Workspace Recovery
+            </button>
           </div>
         </div>
       );

@@ -55,6 +55,7 @@ import { McpView } from './components/McpView';
 import { SystemTrackerView } from './components/SystemTrackerView';
 import { KiloTerminalView } from './components/KiloTerminalView';
 import { ThinkTokenVault } from './components/ThinkTokenVault';
+import { RackMountWrapper } from './components/kilo/RackMountWrapper';
 
 export default function App() {
   const {
@@ -685,69 +686,91 @@ export default function App() {
         {/* View Switcher Output */}
         {activeNav === 'think-token-vault' ? (
           <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
-            <ThinkTokenVault />
+            <RackMountWrapper title="Think Token Vault">
+              <ThinkTokenVault />
+            </RackMountWrapper>
           </div>
         ) : activeNav === 'kilo-terminal' ? (
           <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
-            <KiloTerminalView totalReasoningTokens={totalReasoningTokens} setTotalReasoningTokens={setTotalReasoningTokens} />
+            <RackMountWrapper title="Kudbee Console">
+              <KiloTerminalView totalReasoningTokens={totalReasoningTokens} setTotalReasoningTokens={setTotalReasoningTokens} />
+            </RackMountWrapper>
           </div>
         ) : activeNav === 'tracker' ? (
           <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
-            <SystemTrackerView />
+            <RackMountWrapper title="System Tracker">
+              <SystemTrackerView />
+            </RackMountWrapper>
           </div>
         ) : activeNav === 'observability' ? (
           <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
-            <ObservabilityView liveFeed={liveFeed} />
+            <RackMountWrapper title="Observability">
+              <ObservabilityView liveFeed={liveFeed} />
+            </RackMountWrapper>
           </div>
         ) : activeNav === 'mcp' ? (
           <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
-            <McpView />
+            <RackMountWrapper title="MCP & Heroku Check">
+              <McpView />
+            </RackMountWrapper>
           </div>
         ) : activeNav === 'merge_queue' ? (
           <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
-            <MergeQueueView />
+            <RackMountWrapper title="Merge Queue">
+              <MergeQueueView />
+            </RackMountWrapper>
           </div>
         ) : activeNav === 'mail' ? (
           <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
-            <MailView 
-              mailItems={mailItems} 
-              onMarkAsRead={handleMarkMailAsRead} 
-              onMarkAllAsRead={handleMarkAllMailAsRead}
-              onSimulateAlert={simulateIncomingAlert}
-            />
+            <RackMountWrapper title="Mail">
+              <MailView 
+                mailItems={mailItems} 
+                onMarkAsRead={handleMarkMailAsRead} 
+                onMarkAllAsRead={handleMarkAllMailAsRead}
+                onSimulateAlert={simulateIncomingAlert}
+              />
+            </RackMountWrapper>
           </div>
         ) : activeNav === 'settings' ? (
           <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
-            <SettingsView />
+            <RackMountWrapper title="Settings">
+              <SettingsView />
+            </RackMountWrapper>
           </div>
         ) : activeNav === 'agents' ? (
           <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
-            <AgentsView
-              agents={agents}
-              onSelectAgent={(agent) => setSelectedAgent(agent)}
-              onToggleStatus={handleToggleAgentStatus}
-            />
+            <RackMountWrapper title="Agents" showAgentStatus={true}>
+              <AgentsView
+                agents={agents}
+                onSelectAgent={(agent) => setSelectedAgent(agent)}
+                onToggleStatus={handleToggleAgentStatus}
+              />
+            </RackMountWrapper>
           </div>
         ) : activeNav === 'beads' ? (
           <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
-            <BeadsView
-              beads={beads}
-              onSelectBead={(bead) => setSelectedBead(bead)}
-              onOpenNewBeadModal={() => setIsNewBeadOpen(true)}
-              onStatusChange={handleUpdateBeadStatus}
-            />
+            <RackMountWrapper title="Beads">
+              <BeadsView
+                beads={beads}
+                onSelectBead={(bead) => setSelectedBead(bead)}
+                onOpenNewBeadModal={() => setIsNewBeadOpen(true)}
+                onStatusChange={handleUpdateBeadStatus}
+              />
+            </RackMountWrapper>
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
-            <OverviewView
-              agents={agents}
-              convoys={convoys}
-              liveFeed={liveFeed}
-              onOpenSpinUpModal={() => setIsSpinUpModalOpen(true)}
-              onOpenGrokTerminal={() => setIsGrokTerminalOpen(true)}
-              onSelectAgent={(agent) => setSelectedAgent(agent)}
-              onRunTestTask={handleRunTestTask}
-            />
+            <RackMountWrapper title="Overview">
+              <OverviewView
+                agents={agents}
+                convoys={convoys}
+                liveFeed={liveFeed}
+                onOpenSpinUpModal={() => setIsSpinUpModalOpen(true)}
+                onOpenGrokTerminal={() => setIsGrokTerminalOpen(true)}
+                onSelectAgent={(agent) => setSelectedAgent(agent)}
+                onRunTestTask={handleRunTestTask}
+              />
+            </RackMountWrapper>
           </div>
         )}
       </div>

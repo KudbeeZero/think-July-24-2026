@@ -1,5 +1,6 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useKilo } from '../context/KiloContext';
+import { FixedSizeList } from 'react-window';
 import { 
   Brain, 
   Cpu, 
@@ -19,11 +20,13 @@ import {
 } from 'lucide-react';
 import { NeuralNetMesh, NeuralNode, NeuralLink } from './kilo/NeuralNetMesh';
 import { DeviceSyncTopology, DeviceSyncNode } from './kilo/DeviceSyncTopology';
+import { ModelUsageMeter } from './kilo/ModelUsageMeter';
 import { ResiliencyControls } from './kilo/ResiliencyControls';
 import { PersistentToastTray } from './kilo/PersistentToastTray';
 import { FalloutAnalyticalCharts } from './kilo/FalloutAnalyticalCharts';
 import { SlideWindowGovernor } from './kilo/SlideWindowGovernor';
 import { OrchestratorControlPanel } from './kilo/OrchestratorControlPanel';
+import { VirtualizedLogViewer } from './kilo/VirtualizedLogViewer';
 
 interface KiloTerminalViewProps {
   totalReasoningTokens: number;
@@ -884,7 +887,8 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
         {/* Token Budget Meter */}
         <div className="bg-zinc-950/60 border border-zinc-800/80 rounded-xl p-4 sm:p-5 flex flex-col justify-between backdrop-blur-md shadow-xl hover:border-yellow-500/10 transition-all">
-          <div>
+          <ModelUsageMeter />
+          <div className="mt-4">
             <div className="flex items-center justify-between">
               <span className="text-zinc-400 text-xs font-semibold uppercase tracking-wider flex items-center gap-1.5 font-mono">
                 <Brain className="w-4 h-4 text-yellow-500" /> Token Allocation Budget

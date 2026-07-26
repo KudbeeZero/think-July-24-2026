@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import { Bead, Agent, Convoy, MailItem, TelemetryLog, Status, Priority, NavHistoryItem } from '../types';
+import { Bead, Agent, Convoy, MailItem, TelemetryLog, Status, Priority, NavHistoryItem, ModelUsage } from '../types';
 import { INITIAL_BEADS, INITIAL_AGENTS, INITIAL_CONVOYS, INITIAL_MAIL_ITEMS } from '../data';
 
 interface KiloContextType {
@@ -75,6 +75,8 @@ interface KiloContextType {
   handleCopyPrompt: () => void;
   syncThinkTokens: () => Promise<void>;
   agentHeartbeat: (agentId: string) => void;
+  modelUsage: ModelUsage[];
+  setModelUsage: (val: ModelUsage[] | ((val: ModelUsage[]) => ModelUsage[])) => void;
 }
 
 const KiloContext = createContext<KiloContextType | undefined>(undefined);
@@ -85,6 +87,10 @@ export const KiloProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [convoys, setConvoys] = useState<Convoy[]>(INITIAL_CONVOYS);
   const [mailItems, setMailItems] = useLocalStorage<MailItem[]>('mailItems', INITIAL_MAIL_ITEMS as MailItem[]);
   const [toasts, setToasts] = useLocalStorage<Array<{ id: string; title: string; desc: string; severity?: 'info' | 'warning' | 'critical' | 'escalation' }>>('appToasts', []);
+  const [modelUsage, setModelUsage] = useLocalStorage<ModelUsage[]>('modelUsage', [
+    { modelName: 'GROQ', usageTokens: 125000, limitTokens: 500000 },
+    { modelName: 'ChatGPT-120B', usageTokens: 450000, limitTokens: 500000 },
+  ]);
 
   // Reasoning Tokens State
   const [totalReasoningTokens, setTotalReasoningTokens] = useLocalStorage<number>('totalReasoningTokens', 180750);
@@ -689,7 +695,9 @@ Assign this bead immediately to prevent the Phase 11 convoy from timing out.`,
       handleClearToasts,
       handleCopyPrompt,
       syncThinkTokens,
-      agentHeartbeat
+      agentHeartbeat,
+      modelUsage,
+      setModelUsage
     }}>
       {children}
     </KiloContext.Provider>

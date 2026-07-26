@@ -83,6 +83,12 @@ export interface TelemetryLog {
   reasoningContent?: string;
 }
 
+export interface ModelUsage {
+  modelName: string;
+  usageTokens: number;
+  limitTokens: number;
+}
+
 export interface ReasoningMetrics {
   totalReasoningTokens: number;
   totalPromptTokens: number;

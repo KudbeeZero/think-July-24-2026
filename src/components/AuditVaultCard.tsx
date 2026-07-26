@@ -3,6 +3,14 @@ import { ShieldCheck, Download, Key, CheckCircle2, XCircle, ShieldAlert, Cpu, Ha
 import { AuditVaultPayload, AuditVaultAnchor } from '../types';
 import { useEd25519Verify } from '../hooks/useEd25519Verify';
 
+const hexToUint8Array = (hexString: string) => {
+  const bytes = new Uint8Array(hexString.length / 2);
+  for (let i = 0; i < hexString.length; i += 2) {
+    bytes[i / 2] = parseInt(hexString.substring(i, i + 2), 16);
+  }
+  return bytes;
+};
+
 export const AuditVaultCard: React.FC = () => {
   const [payload, setPayload] = useState<AuditVaultPayload | null>(null);
   const [loading, setLoading] = useState(false);
@@ -38,7 +46,7 @@ export const AuditVaultCard: React.FC = () => {
       const keyData = await keyRes.json();
       const pubKeyHex = keyData.publicKeyHex;
 
-      const pubKey = new Uint8Array(Buffer.from(pubKeyHex, 'hex'));
+      const pubKey = hexToUint8Array(pubKeyHex);
       const msg = new TextEncoder().encode(selectedAnchor.hash);
 
       let sigBytes: Uint8Array;
@@ -46,7 +54,7 @@ export const AuditVaultCard: React.FC = () => {
         // Mock verification pass for demo genesis
         sigBytes = new Uint8Array(64);
       } else {
-        sigBytes = new Uint8Array(Buffer.from(selectedAnchor.signature, 'hex'));
+        sigBytes = hexToUint8Array(selectedAnchor.signature);
       }
 
       await verify(pubKey, sigBytes, msg);
