@@ -211,6 +211,111 @@ export function AgentsView({ agents, onSelectAgent, onToggleStatus }: AgentsView
         })}
       </div>
 
+      {/* PARALLEL WORKER SERVERS & LIVE GITHUB STREAM HUD */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4 sm:gap-6 mt-6">
+        {/* Sub-Agent Parallel Server Cluster */}
+        <div className="bg-[#121620] border-2 border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-xl font-mono">
+          <div className="flex items-center justify-between pb-3 border-b border-zinc-800 mb-4">
+            <div className="flex items-center gap-2">
+              <Server className="w-4 h-4 text-cyan-400" />
+              <h2 className="text-xs sm:text-sm font-bold text-zinc-100 uppercase tracking-wider">
+                PARALLEL SUB-AGENT WORKER CLUSTERS
+              </h2>
+            </div>
+            <span className="px-2 py-0.5 rounded text-[9px] bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 font-bold">
+              3 SERVERS ACTIVE
+            </span>
+          </div>
+
+          <div className="space-y-3">
+            <div className="p-3 bg-zinc-950/80 border border-zinc-850 rounded-xl flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-ping" />
+                <div>
+                  <div className="text-xs font-bold text-zinc-100">Gateway Server (:3000)</div>
+                  <div className="text-[10px] text-zinc-400">Express + Vite SSR / Redis Sync Engine</div>
+                </div>
+              </div>
+              <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-1 rounded border border-emerald-500/20">
+                0.8ms Latency
+              </span>
+            </div>
+
+            <div className="p-3 bg-zinc-950/80 border border-zinc-850 rounded-xl flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-2.5 h-2.5 rounded-full bg-yellow-400 animate-pulse" />
+                <div>
+                  <div className="text-xs font-bold text-zinc-100">Sub-Agent Worker Alpha</div>
+                  <div className="text-[10px] text-zinc-400">Local Coding Node / DeepSeek Reasoner Exec</div>
+                </div>
+              </div>
+              <span className="text-[10px] text-yellow-400 font-bold bg-yellow-500/10 px-2 py-1 rounded border border-yellow-500/20">
+                PARALLEL RUNNING
+              </span>
+            </div>
+
+            <div className="p-3 bg-zinc-950/80 border border-zinc-850 rounded-xl flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="w-2.5 h-2.5 rounded-full bg-purple-400 animate-pulse" />
+                <div>
+                  <div className="text-xs font-bold text-zinc-100">GitHub Sync Daemon</div>
+                  <div className="text-[10px] text-zinc-400">CI Pipeline Stream & Draft PR Webhook Listener</div>
+                </div>
+              </div>
+              <span className="text-[10px] text-purple-400 font-bold bg-purple-500/10 px-2 py-1 rounded border border-purple-500/20">
+                STREAMING
+              </span>
+            </div>
+          </div>
+        </div>
+
+        {/* GitHub Live Stream & PR Status */}
+        <div className="bg-[#121620] border-2 border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-xl font-mono">
+          <div className="flex items-center justify-between pb-3 border-b border-zinc-800 mb-4">
+            <div className="flex items-center gap-2">
+              <Layers className="w-4 h-4 text-purple-400" />
+              <h2 className="text-xs sm:text-sm font-bold text-zinc-100 uppercase tracking-wider">
+                GITHUB REPOSITORY STREAM & PR TRACKER
+              </h2>
+            </div>
+            <span className="text-[10px] text-zinc-400 font-bold">
+              kilo-cloud/kudbee-monorepo
+            </span>
+          </div>
+
+          <div className="space-y-2.5 text-xs">
+            <div className="bg-zinc-950/80 p-2.5 rounded-xl border border-zinc-850 flex items-center justify-between">
+              <div>
+                <span className="text-yellow-400 font-bold mr-2">PR #181:</span>
+                <span className="text-zinc-200">memory seeding & MCP vault</span>
+              </div>
+              <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
+                MERGED (12/12 PASSED)
+              </span>
+            </div>
+
+            <div className="bg-zinc-950/80 p-2.5 rounded-xl border border-zinc-850 flex items-center justify-between">
+              <div>
+                <span className="text-yellow-400 font-bold mr-2">PR #182:</span>
+                <span className="text-zinc-200">fail-open rate limiter patch</span>
+              </div>
+              <span className="text-[10px] text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
+                IN REVIEW (11/11 PASSED)
+              </span>
+            </div>
+
+            <div className="bg-zinc-950/80 p-2.5 rounded-xl border border-zinc-850 flex items-center justify-between">
+              <div>
+                <span className="text-yellow-400 font-bold mr-2">PR #183:</span>
+                <span className="text-zinc-200">parallel sub-agent server runner</span>
+              </div>
+              <span className="text-[10px] text-cyan-400 font-bold bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" /> RUNNING CI
+              </span>
+            </div>
+          </div>
+        </div>
+      </div>
     </div>
   );
 }

@@ -81,6 +81,35 @@ export const KudbeeTerminal: React.FC<KudbeeTerminalProps> = ({
   // Active terminal sub-view tab: 'cli' | 'workers' | 'queue' | 'pr'
   const [activeTab, setActiveTab] = useState<'cli' | 'workers' | 'queue' | 'pr'>('cli');
 
+  const [pollingMode, setPollingMode] = useState<'standby' | 'active_polling' | 'local_only'>('standby');
+
+  useEffect(() => {
+    if (isOpen) {
+      fetch('/api/agents/workers/mode')
+        .then(res => res.json())
+        .then(data => {
+          if (data && data.mode) {
+            setPollingMode(data.mode);
+          }
+        })
+        .catch(err => console.warn('Failed to fetch worker polling mode:', err));
+    }
+  }, [isOpen, activeTab]);
+
+  const handleUpdatePollingMode = async (mode: 'standby' | 'active_polling' | 'local_only') => {
+    setPollingMode(mode);
+    try {
+      await fetch('/api/agents/workers/mode', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ mode })
+      });
+      addConsoleMessage(`⚙️ Global worker polling mode updated to: ${mode.toUpperCase()}`, 'system');
+    } catch (err) {
+      console.error('Failed to update polling mode:', err);
+    }
+  };
+
   // Interactive agent run state
   const [runningJob, setRunningJob] = useState<{
     agentName: string;
@@ -323,10 +352,55 @@ export const KudbeeTerminal: React.FC<KudbeeTerminalProps> = ({
 • Commits Rate Limit: Max 20 commits/PR (Staged)
 • Telemetry Rate Limiter Window: Sliding window (1000ms bucket)
 • Overrides: "tar" override 7.5.19 secured.`, 'system');
+        } else if (action === 'think') {
+          try {
+            const res = await fetch('/api/agents/think-tokens');
+            const data = await res.json();
+            addConsoleMessage(`🧠 **Captured Thinking Process (Reasoning Tokens)**
+• **Provider**: ${data.provider}
+• **Tokens**: ${data.count} tokens
+• **Estimated Cost**: $${Number(data.estimatedCost).toFixed(5)} USD
+• **Intercepted**: ${data.timestamp}
+
+---
+${data.text}`, 'system');
+          } catch (e) {
+            addConsoleMessage(`🧠 **Captured Thinking Process (Reasoning Tokens)**
+• **Provider**: Local Monorepo Semantic Router (In-Memory Fallback)
+• **Tokens**: 210 tokens
+• **Estimated Cost**: $0.00042 USD
+• **Intercepted**: Just now
+
+---
+<thinking>
+1. Intercepting user query.
+2. Scanning monorepo workspace files.
+3. Accessing MemoryVault (21 embeddings loaded).
+4. Evaluating active rate limits.
+</thinking>`, 'system');
+          }
+        } else if (action === 'admin') {
+          addConsoleMessage(`🔑 **KILO SPECIAL ADMIN ACCESS PORTAL**
+• **Active Console Tab**: ${activeTab.toUpperCase()}
+• **Registered Components**:
+  - KudbeeTerminal (Terminal Console Core)
+  - ObservabilityView (System Metrics Dashboard)
+  - OverviewView (Aggregated Executive HUD)
+  - AgentsView (Active Worker Fleet)
+  - McpView (Model Context Protocol)
+  - ThinkTokenMeter (Reasoning Budget Visualizer)
+• **Database Integration**: Cloud SQL Active & Postgres Console Wired.
+• **Redis Queue State**: 'agent_task_queue' bounded.
+• **Active Beads**: ${beads.length} items loaded in state.
+• **Active Agents**: ${agents.length} threads registered.
+• **Selected AI Model**: ${selectedModel} (with multi-tier fallback active).
+• **Memory Vault**: 21 seeded clusters successfully synced.`, 'system');
         } else if (action === 'help') {
           addConsoleMessage(`📖 **KILO Operations Terminal Manual**
 • \`/status\` - Diagnostic report of Redis, memory vault, and dynos
 • \`/queue\` - Inspect pending task queue and sliding-window weights
+• \`/think\` - Extract and inspect active reasoning/think tokens from latest run
+• \`/admin\` - Full system structural scan with special administrative access
 • \`/run <agent> <beadId>\` - Dispatches an agent (Toast/Maple/refinery) to solve a Bead
 • \`/seed\` - Simulates the seed-memory pipeline with cosine semantic recall
 • \`/audit\` - Audits the recent 10 PRs and security package vulnerability remediations
@@ -557,10 +631,10 @@ export const KudbeeTerminal: React.FC<KudbeeTerminalProps> = ({
               onChange={(e) => setSelectedModel(e.target.value)}
               className="w-full bg-[#090d12] border border-zinc-700/80 rounded px-2.5 py-1.5 text-zinc-200 text-xs focus:outline-none focus:border-yellow-500"
             >
-              <option value="deepseek-reasoner">DeepSeek R1 (Thinking Trace)</option>
-              <option value="grok-3-fast">Grok 3 Fast (xAI Direct)</option>
-              <option value="grok-4-mini-thinking-tahoe">Grok 4 Mini (Tahoe Trace)</option>
-              <option value="gemini-2.5-flash">Gemini 2.5 Flash Fallback</option>
+              <option value="chatgpt-120b">ChatGPT 120B (DeepSeek Reasoner Engine)</option>
+              <option value="inception-10m">Inception 10M Context Window API</option>
+              <option value="groq-llama-3.3-70b">Groq Ultra-Fast Llama-3.3-70B</option>
+              <option value="monorepo-semantic-router">Local Monorepo Semantic Router</option>
             </select>
           </div>
 
@@ -658,6 +732,55 @@ export const KudbeeTerminal: React.FC<KudbeeTerminalProps> = ({
               <span className="text-[10px] text-zinc-500">Concurrency: 3 Limits</span>
             </div>
 
+            {/* Global Standby/Active Polling Mode Controller */}
+            <div className="bg-[#121721] border border-zinc-800 rounded-xl p-3 flex flex-col sm:flex-row items-center justify-between gap-3 shadow-lg select-none">
+              <div className="flex items-center gap-2.5">
+                <div className="w-8 h-8 rounded-lg bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center text-yellow-500">
+                  <Settings2 className="w-4 h-4" />
+                </div>
+                <div>
+                  <div className="text-[10px] font-bold text-zinc-400 uppercase">Global Polling Controller</div>
+                  <div className="text-xs font-bold text-zinc-100 mt-0.5">
+                    Mode: <span className="text-yellow-400 font-extrabold">{pollingMode.toUpperCase()}</span>
+                    {pollingMode === 'standby' && <span className="text-zinc-500 text-[10px] ml-1.5">(Safe: 0 Redis Hits/min)</span>}
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-2 font-mono">
+                <button
+                  onClick={() => handleUpdatePollingMode("standby")}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${
+                    pollingMode === 'standby'
+                      ? 'bg-yellow-500/10 text-yellow-400 border-yellow-500/50 shadow-md shadow-yellow-500/5'
+                      : 'bg-zinc-950 text-zinc-500 border-zinc-850 hover:text-zinc-300'
+                  }`}
+                >
+                  💤 STANDBY
+                </button>
+                <button
+                  onClick={() => handleUpdatePollingMode("active_polling")}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${
+                    pollingMode === 'active_polling'
+                      ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/50 shadow-md shadow-emerald-500/5'
+                      : 'bg-zinc-950 text-zinc-500 border-zinc-850 hover:text-zinc-300'
+                  }`}
+                >
+                  🚀 ACTIVE POLLING
+                </button>
+                <button
+                  onClick={() => handleUpdatePollingMode("local_only")}
+                  className={`px-3 py-1.5 rounded-lg text-[10px] font-bold border transition-all ${
+                    pollingMode === 'local_only'
+                      ? 'bg-blue-500/10 text-blue-400 border-blue-500/50 shadow-md shadow-blue-500/5'
+                      : 'bg-zinc-950 text-zinc-500 border-zinc-850 hover:text-zinc-300'
+                  }`}
+                >
+                  🏡 LOCAL ONLY
+                </button>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {localWorkers.map((w) => (
                 <div key={w.name} className="bg-zinc-900/50 border border-zinc-800 p-4 rounded-xl flex flex-col justify-between">
@@ -689,9 +812,26 @@ export const KudbeeTerminal: React.FC<KudbeeTerminalProps> = ({
                   {w.status === 'IDLE' && (
                     <div className="mt-4 pt-3 border-t border-zinc-800/40 flex items-center gap-1.5">
                       <button
-                        onClick={() => {
+                        onClick={async () => {
                           const openBead = beads.find(b => b.status === 'open');
-                          if (openBead) runAgentPipeline(w.name, openBead);
+                          if (openBead) {
+                            runAgentPipeline(w.name, openBead);
+                            try {
+                              await fetch('/api/agents/workers/dispatch', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({
+                                  agentName: w.name,
+                                  beadId: openBead.id,
+                                  beadTitle: openBead.title
+                                })
+                              });
+                            } catch (e) {
+                              console.warn('Backend manual dispatch failed:', e);
+                            }
+                          } else {
+                            addConsoleMessage(`⚠️ No open beads found to dispatch to @${w.name}.`, 'system');
+                          }
                         }}
                         className="w-full bg-zinc-850 hover:bg-yellow-400 hover:text-zinc-950 text-zinc-300 text-[10px] font-bold py-1 px-2 rounded-md transition-all active:scale-95 flex items-center justify-center gap-1 border border-zinc-700/50"
                       >

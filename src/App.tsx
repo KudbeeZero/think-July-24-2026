@@ -53,6 +53,7 @@ import { BeadsView } from './components/BeadsView';
 import { McpView } from './components/McpView';
 import { SystemTrackerView } from './components/SystemTrackerView';
 import { KiloTerminalView } from './components/KiloTerminalView';
+import { ThinkTokenVault } from './components/ThinkTokenVault';
 
 export default function App() {
   const {
@@ -324,6 +325,25 @@ export default function App() {
 
           <button
             onClick={() => {
+              setActiveNav('think-token-vault');
+              setIsSidebarOpen(false);
+            }}
+            className={`flex items-center justify-between px-3 py-2 text-sm rounded-md transition-colors text-left ${
+              activeNav === 'think-token-vault'
+                ? 'text-zinc-100 bg-zinc-800/80 font-medium font-bold'
+                : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40'
+            }`}
+          >
+            <span className="flex items-center gap-3">
+              <Cpu className="w-4 h-4 text-cyan-400 animate-pulse" /> Think Token Vault
+            </span>
+            <span className="text-[9px] uppercase font-mono px-1.5 py-0.5 rounded bg-cyan-500/10 text-cyan-400 font-bold border border-cyan-500/10">
+              New
+            </span>
+          </button>
+
+          <button
+            onClick={() => {
               setIsGrokTerminalOpen(!isGrokTerminalOpen);
               setIsSidebarOpen(false);
             }}
@@ -367,38 +387,77 @@ export default function App() {
         </nav>
 
         {/* System Topology Map */}
-        <div className="px-4 mb-2 text-[10px] font-bold text-zinc-500 tracking-wider">SYSTEM TOPOLOGY</div>
+        <div className="px-4 mb-2 flex items-center justify-between">
+          <span className="text-[10px] font-bold text-zinc-500 tracking-wider">SYSTEM TOPOLOGY</span>
+          <span className="text-[9px] font-mono text-emerald-400 font-bold flex items-center gap-1">
+            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" /> 5 SWARM NODES
+          </span>
+        </div>
         <div className="px-4 mb-4 flex justify-center">
-          <div className="relative w-full aspect-square max-w-[200px] flex items-center justify-center">
-            {/* Connection Lines */}
-            <svg className="absolute inset-0 w-full h-full text-zinc-700" style={{ zIndex: 0 }}>
-              <line x1="50%" y1="75%" x2="20%" y2="40%" stroke="currentColor" strokeWidth="1.5" />
-              <line x1="50%" y1="75%" x2="35%" y2="30%" stroke="currentColor" strokeWidth="1.5" />
-              <line x1="50%" y1="75%" x2="50%" y2="25%" stroke="currentColor" strokeWidth="1.5" />
-              <line x1="50%" y1="75%" x2="65%" y2="30%" stroke="currentColor" strokeWidth="1.5" />
-              <line x1="50%" y1="75%" x2="80%" y2="40%" stroke="currentColor" strokeWidth="1.5" />
+          <div className="relative w-full aspect-square max-w-[210px] flex items-center justify-center bg-[#080c11] border border-zinc-800/80 rounded-2xl p-2 shadow-inner">
+            {/* Background Glow */}
+            <div className="absolute inset-0 bg-yellow-500/5 rounded-2xl blur-xl pointer-events-none" />
+
+            {/* Connection Lines with Pulsing Data Flow */}
+            <svg className="absolute inset-0 w-full h-full text-zinc-800" style={{ zIndex: 0 }}>
+              <style>{`
+                @keyframes pulse-dash {
+                  to {
+                    stroke-dashoffset: -40;
+                  }
+                }
+                .flow-line {
+                  stroke-dasharray: 6, 4;
+                  animation: pulse-dash 2s linear infinite;
+                }
+              `}</style>
+              <line x1="50%" y1="75%" x2="20%" y2="40%" stroke="#1f2937" strokeWidth="2" />
+              <line x1="50%" y1="75%" x2="20%" y2="40%" stroke="#e5ff55" strokeWidth="2" className="flow-line" style={{ animationDelay: '0s' }} />
+
+              <line x1="50%" y1="75%" x2="35%" y2="30%" stroke="#1f2937" strokeWidth="2" />
+              <line x1="50%" y1="75%" x2="35%" y2="30%" stroke="#60a5fa" strokeWidth="2" className="flow-line" style={{ animationDelay: '0.4s' }} />
+
+              <line x1="50%" y1="75%" x2="50%" y2="25%" stroke="#1f2937" strokeWidth="2" />
+              <line x1="50%" y1="75%" x2="50%" y2="25%" stroke="#34d399" strokeWidth="2" className="flow-line" style={{ animationDelay: '0.8s' }} />
+
+              <line x1="50%" y1="75%" x2="65%" y2="30%" stroke="#1f2937" strokeWidth="2" />
+              <line x1="50%" y1="75%" x2="65%" y2="30%" stroke="#c084fc" strokeWidth="2" className="flow-line" style={{ animationDelay: '1.2s' }} />
+
+              <line x1="50%" y1="75%" x2="80%" y2="40%" stroke="#1f2937" strokeWidth="2" />
+              <line x1="50%" y1="75%" x2="80%" y2="40%" stroke="#fbbf24" strokeWidth="2" className="flow-line" style={{ animationDelay: '1.6s' }} />
             </svg>
             
             {/* Mayor Node */}
-            <div className="absolute bottom-[10%] w-16 h-16 rounded-full bg-[#e5ff55] flex flex-col items-center justify-center shadow-[0_0_15px_rgba(229,255,85,0.3)] z-10 border-4 border-[#0d1117]">
-              <span className="text-[9px] font-bold text-zinc-950">MAYOR</span>
+            <div className="absolute bottom-[8%] w-16 h-16 rounded-full bg-[#e5ff55] flex flex-col items-center justify-center shadow-[0_0_20px_rgba(229,255,85,0.4)] z-10 border-4 border-[#080c11] relative group cursor-pointer transition-transform hover:scale-110">
+              <span className="text-[9px] font-extrabold text-zinc-950">MAYOR</span>
+              <span className="text-[7px] font-bold text-zinc-800">100% HEALTH</span>
+              <span className="absolute top-1 right-1 w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
             </div>
             
             {/* Worker Nodes */}
-            <div className="absolute top-[32%] left-[10%] w-8 h-8 rounded-full bg-zinc-800 border-2 border-zinc-700 flex flex-col items-center justify-center z-10">
-              <span className="text-[7px] text-zinc-400 font-medium">Toast</span>
+            <div className="absolute top-[32%] left-[8%] w-8 h-8 rounded-full bg-zinc-900 border-2 border-emerald-500/80 flex flex-col items-center justify-center z-10 relative shadow-[0_0_10px_rgba(16,185,129,0.3)] group cursor-pointer hover:scale-110 transition-transform">
+              <span className="text-[7px] text-zinc-200 font-bold">Toast</span>
+              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-[#080c11]" />
             </div>
-            <div className="absolute top-[22%] left-[28%] w-8 h-8 rounded-full bg-zinc-800 border-2 border-zinc-700 flex flex-col items-center justify-center z-10">
-              <span className="text-[7px] text-zinc-400 font-medium">Maple</span>
+
+            <div className="absolute top-[20%] left-[26%] w-8 h-8 rounded-full bg-zinc-900 border-2 border-emerald-500/80 flex flex-col items-center justify-center z-10 relative shadow-[0_0_10px_rgba(16,185,129,0.3)] group cursor-pointer hover:scale-110 transition-transform">
+              <span className="text-[7px] text-zinc-200 font-bold">Maple</span>
+              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-[#080c11]" />
             </div>
-            <div className="absolute top-[17%] left-[50%] -translate-x-1/2 w-8 h-8 rounded-full bg-zinc-800 border-2 border-yellow-500/50 flex flex-col items-center justify-center z-10 shadow-[0_0_10px_rgba(234,179,8,0.2)]">
-              <span className="text-[7px] text-zinc-200 font-medium">refinery</span>
+
+            <div className="absolute top-[14%] left-[50%] -translate-x-1/2 w-9 h-9 rounded-full bg-zinc-900 border-2 border-yellow-400 flex flex-col items-center justify-center z-10 shadow-[0_0_15px_rgba(250,204,21,0.4)] relative group cursor-pointer hover:scale-110 transition-transform">
+              <span className="text-[7px] text-yellow-300 font-extrabold">refinery</span>
+              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-yellow-400 border-2 border-[#080c11] animate-pulse" />
             </div>
-            <div className="absolute top-[22%] right-[28%] w-8 h-8 rounded-full bg-zinc-800 border-2 border-zinc-700 flex flex-col items-center justify-center z-10">
-              <span className="text-[7px] text-zinc-400 font-medium">Shadow</span>
+
+            <div className="absolute top-[20%] right-[26%] w-8 h-8 rounded-full bg-zinc-900 border-2 border-cyan-500/80 flex flex-col items-center justify-center z-10 relative shadow-[0_0_10px_rgba(6,182,212,0.3)] group cursor-pointer hover:scale-110 transition-transform">
+              <span className="text-[7px] text-cyan-300 font-bold">Shadow</span>
+              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-cyan-400 border-2 border-[#080c11]" />
             </div>
-            <div className="absolute top-[32%] right-[10%] w-8 h-8 rounded-full bg-zinc-800 border-2 border-zinc-700 flex flex-col items-center justify-center z-10">
-              <span className="text-[7px] text-zinc-400 font-medium">Clover</span>
+
+            <div className="absolute top-[32%] right-[8%] w-8 h-8 rounded-full bg-zinc-900 border-2 border-purple-500/80 flex flex-col items-center justify-center z-10 relative shadow-[0_0_10px_rgba(168,85,247,0.3)] group cursor-pointer hover:scale-110 transition-transform">
+              <span className="text-[7px] text-purple-300 font-bold">Clover</span>
+              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-purple-400 border-2 border-[#080c11]" />
             </div>
           </div>
         </div>
@@ -483,7 +542,11 @@ export default function App() {
         </header>
 
         {/* View Switcher Output */}
-        {activeNav === 'kilo-terminal' ? (
+        {activeNav === 'think-token-vault' ? (
+          <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <ThinkTokenVault />
+          </div>
+        ) : activeNav === 'kilo-terminal' ? (
           <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
             <KiloTerminalView totalReasoningTokens={totalReasoningTokens} setTotalReasoningTokens={setTotalReasoningTokens} />
           </div>

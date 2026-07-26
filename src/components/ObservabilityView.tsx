@@ -126,9 +126,20 @@ export function ObservabilityView({ liveFeed = [] }: { liveFeed?: Array<{msg: st
       {/* Telemetry Stream Log */}
       <div className="bg-[#161b22] border border-zinc-800/80 rounded-xl overflow-hidden">
         <div className="px-5 py-3 border-b border-zinc-800 bg-[#0d1117] flex items-center justify-between">
-          <h3 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider font-mono">
-            Live Telemetry Logs
-          </h3>
+          <div className="flex items-center gap-2">
+            <h3 className="text-xs font-semibold text-zinc-300 uppercase tracking-wider font-mono">
+              Live Telemetry Logs
+            </h3>
+            {liveFeed && liveFeed.length > 0 ? (
+              <span className="px-2 py-0.5 rounded bg-green-500/10 border border-green-500/30 text-green-400 text-[9px] font-bold tracking-wide">
+                🟢 REAL-TIME LIVE STREAM
+              </span>
+            ) : (
+              <span className="px-2 py-0.5 rounded bg-yellow-500/10 border border-yellow-500/30 text-yellow-400 text-[9px] font-bold tracking-wide">
+                🟡 SIMULATED DATA FALLBACK
+              </span>
+            )}
+          </div>
           <span className="text-[10px] text-zinc-500 font-mono">{displayFeed.length} events captured</span>
         </div>
         <div className="divide-y divide-zinc-800/60 font-mono text-xs">
