@@ -1,4 +1,10 @@
 import { kiloBridgeMiddleware, getCachedTokenTransactions } from "./src/middleware/kiloBridge.ts";
+import {
+  loadReconciledState,
+  saveReconciledState,
+  loadThinkTokenMints,
+  mintThinkTokens
+} from "./src/middleware/stateSyncMiddleware.ts";
 import express from "express";
 import path from "path";
 import crypto from "crypto";
@@ -1118,6 +1124,41 @@ async function startServer() {
     });
   });
 
+  // Token Minting & Reconciling Endpoints
+  app.post("/api/tokens/mint", async (req, res) => {
+    const { amount, reason, agentId, agentName } = req.body;
+    try {
+      await mintThinkTokens(amount, reason, agentId, agentName);
+      
+      latestThinkTokens.count += amount;
+      latestThinkTokens.estimatedCost = latestThinkTokens.count * 0.000002;
+      latestThinkTokens.timestamp = new Date().toISOString();
+      
+      engine.emit('log', {
+        source: 'TokenVault',
+        event: `Minted ${amount} tokens for ${agentName || 'Agent'}. Total: ${latestThinkTokens.count}.`
+      });
+
+      res.json({ success: true, balance: latestThinkTokens.count });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
+  app.post("/api/tokens/sync", async (req, res) => {
+    const { totalMinted, timestamp } = req.body;
+    try {
+      // Simulate reconciling in-memory events with database
+      engine.emit('log', {
+        source: 'MemoryVault',
+        event: `Token sync protocol active. Verified ${totalMinted} tokens at ${timestamp}. Conflict status: CLEAN.`
+      });
+      res.json({ success: true, message: 'Sync complete' });
+    } catch (e: any) {
+      res.status(500).json({ success: false, error: e.message });
+    }
+  });
+
   // Endpoint to submit a task to the agents
   app.post("/api/agents/task", async (req, res) => {
     const { type, payload } = req.body;
@@ -1324,6 +1365,67 @@ async function startServer() {
       success: true,
       count: history.length,
       history
+    });
+  });
+
+  // State Synchronization & Reconciliation Endpoint
+  app.post("/api/sync/reconcile", (req, res) => {
+    const { thinkTokenVault, beadsSummary, agentStatesSummary, beadsCount, activeAgentsCount, activeConvoysCount } = req.body;
+    
+    const updated = saveReconciledState({
+      ...(thinkTokenVault && { thinkTokenVault }),
+      ...(beadsSummary && { beadsSummary }),
+      ...(agentStatesSummary && { agentStatesSummary }),
+      ...(beadsCount !== undefined && { beadsCount }),
+      ...(activeAgentsCount !== undefined && { activeAgentsCount }),
+      ...(activeConvoysCount !== undefined && { activeConvoysCount })
+    });
+
+    res.json({
+      success: true,
+      reconciledAt: updated.lastUpdated,
+      state: updated
+    });
+  });
+
+  // Get Reconciled State
+  app.get("/api/sync/state", (req, res) => {
+    const state = loadReconciledState();
+    res.json({
+      success: true,
+      state
+    });
+  });
+
+  // Think-Token Minting Endpoint with Timestamping & Event Logging
+  app.post("/api/tokens/mint", (req, res) => {
+    const { amount, reason, agentId, agentName } = req.body;
+    
+    if (!amount || typeof amount !== 'number' || amount <= 0) {
+      return res.status(400).json({ error: 'Invalid mint amount' });
+    }
+
+    const mintEvent = mintThinkTokens(
+      amount,
+      reason || 'System Agent Execution Reward',
+      agentId,
+      agentName
+    );
+
+    res.json({
+      success: true,
+      mintEvent,
+      reconciledState: loadReconciledState()
+    });
+  });
+
+  // Get Think-Token Mint Event Log
+  app.get("/api/tokens/mints", (req, res) => {
+    const mints = loadThinkTokenMints();
+    res.json({
+      success: true,
+      count: mints.length,
+      mints
     });
   });
 

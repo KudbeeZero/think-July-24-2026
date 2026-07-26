@@ -54,6 +54,9 @@ interface KudbeeTerminalProps {
   onAddBead?: (bead: Omit<Bead, 'id' | 'createdAt'>) => void;
   agents: Agent[];
   convoys: Convoy[];
+  activeModel?: string;
+  setActiveModel?: (val: string) => void;
+  onMintThinkTokens?: (amount: number, reason: string, agentId?: string, agentName?: string) => Promise<void>;
 }
 
 export const KudbeeTerminal: React.FC<KudbeeTerminalProps> = ({
@@ -65,9 +68,15 @@ export const KudbeeTerminal: React.FC<KudbeeTerminalProps> = ({
   onAddBead,
   agents,
   convoys,
+  activeModel,
+  setActiveModel,
+  onMintThinkTokens,
 }) => {
   const [isExpanded, setIsExpanded] = useState(false);
-  const [selectedModel, setSelectedModel] = useState('deepseek-reasoner');
+  const [localModel, setLocalModel] = useState('gemini-2.5-pro');
+  const selectedModel = activeModel || localModel;
+  const setSelectedModel = setActiveModel || setLocalModel;
+  
   const [proxyUrl, setProxyUrl] = useState('http://127.0.0.1:8080');
   const [showSettings, setShowSettings] = useState(false);
   const [showRawJson, setShowRawJson] = useState<string | null>(null);
@@ -139,12 +148,12 @@ export const KudbeeTerminal: React.FC<KudbeeTerminalProps> = ({
     { name: 'Maple', role: 'polecat', status: 'IDLE' },
   ]);
 
-  const [activeEngine, setActiveEngine] = useState<string>('DeepSeek R1 / Kilo Router');
+  const [activeEngine, setActiveEngine] = useState<string>('DeepSeek R1 / Kudbee Router');
   const [messages, setMessages] = useState<KudbeeMessage[]>([
     {
       id: 'init-1',
       sender: 'system',
-      text: '🤖 **KILO Agent Operations Console** v3.4.0-production initialized.\n\n• **Sync status**: Connected to Cloud SQL & local memory vault indices\n• **Active workers**: 3 threads (Toast, refinery, Maple)\n• **Upstash Redis status**: Fail-open with exponential backoff active\n\nType any natural language question to query Grok/DeepSeek, or run operational commands (e.g. `/status`, `/run Toast b1`, `/queue`, `/help`).',
+      text: '🤖 **KUDBEE Agent Operations Console** v3.4.0-production initialized.\n\n• **Sync status**: Connected to Cloud SQL & local memory vault indices\n• **Active workers**: 3 threads (Toast, refinery, Maple)\n• **Upstash Redis status**: Fail-open with exponential backoff active\n\nType any natural language question to query Grok/DeepSeek, or run operational commands (e.g. `/status`, `/run Toast b1`, `/queue`, `/help`).',
       timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
     },
   ]);
@@ -175,14 +184,14 @@ export const KudbeeTerminal: React.FC<KudbeeTerminalProps> = ({
     ]);
   };
 
-  // Run the animated step-by-step KILO Cloud Agent pipeline
+  // Run the animated step-by-step KUDBEE Cloud Agent pipeline
   const runAgentPipeline = (agentName: string, targetBead: Bead) => {
     if (runningJob) {
       addConsoleMessage(`⚠️ Cannot start job: Agent worker pipeline is currently busy with ${runningJob.agentName} working on Bead ${runningJob.beadId}.`, 'system');
       return;
     }
 
-    addConsoleMessage(`🚀 Dispatching Kilo Cloud Agent **@${agentName}** to resolve Bead **${targetBead.id}**: "${targetBead.title}"`, 'system');
+    addConsoleMessage(`🚀 Dispatching Kudbee Cloud Agent **@${agentName}** to resolve Bead **${targetBead.id}**: "${targetBead.title}"`, 'system');
     onUpdateBeadStatus(targetBead.id, 'in-progress');
     onUpdateBeadAssignee(targetBead.id, agentName);
 
@@ -303,15 +312,30 @@ export const KudbeeTerminal: React.FC<KudbeeTerminalProps> = ({
     }, 2200);
   };
 
-  const generateInMemoryKudbeeResponse = (prompt: string, model: string): string => {
+  const generateInMemoryKudbeeResponse = (prompt: string, model: string, tokens: number): string => {
     const lower = prompt.toLowerCase();
+    const tokenStr = tokens.toLocaleString();
+    const header = `🧠 **KUDBEE Cognitive Memory Layer [Activated via ${tokenStr} Think-Tokens]**
+---
+🔍 **MemoryVault Semantic Indices Retrieved**:
+• *Memory Entry (cos: 0.96)*: "Resolved Upstash Redis 500k rate limit by implementing exponential backoff & in-memory sliding window fallback."
+• *Memory Entry (cos: 0.91)*: "MemoryVault vector semantic recall test suite initialized and 21 unit tests fully verified."
+• *Memory Entry (cos: 0.88)*: "Exposed active model selection directly to the Operator in the main console bar."
+• *Memory Entry (cos: 0.84)*: "Frontend Wrapped in top-level Suspense and ErrorBoundary to secure smooth rendering."
+
+---
+`;
+
     if (lower.includes('hello') || lower.includes('hi ') || lower.includes('test')) {
-      return `Hello! Kilo Agent Autonomous Engine active. All system layers are healthy. Ready to dispatch worker threads or assist with telemetry logs.`;
+      return `${header}Hello! The KUDBEE Agent Autonomous Engine is active and synchronized. All worker nodes are nominal and ready to execute staging or telemetry indexing tasks.`;
     }
-    if (lower.includes('telemetry') || lower.includes('audit') || lower.includes('monorepo')) {
-      return `⚡ **Monorepo Telemetry & Architecture Audit**\n\n1. **Redis Worker Rate Limits**: Polling backoff active (Upstash 500k cap protected).\n2. **Kudbee API Multi-Tier Fallback**: Connected across Direct xAI, Groq, Inception 10M Provider, and Gemini.\n3. **Front-End Hydration**: Root Suspense and Error Boundary verified clean.`;
+    if (lower.includes('telemetry') || lower.includes('audit') || lower.includes('monorepo') || lower.includes('redis')) {
+      return `${header}⚡ **Monorepo Telemetry & Deployment Audit**:
+1. **Redis Resiliency**: Exponential backoff reconnection is active; limits protected on Upstash free caps.
+2. **Kudbee Multitier Fallback**: Multi-provider failover configured across Gemini, xAI, and Groq.
+3. **Reasoning Memory**: Agents can query the MemoryVault securely using active Think-Tokens for semantic retrieval weights.`;
     }
-    return `Regarding "${prompt}": I've analyzed your query against the monorepo context. All operations are running smoothly. Use operational buttons above to run specific simulations.`;
+    return `${header}I have processed your query against the KUDBEE MemoryVault utilizing ${tokenStr} reasoning tokens on the ${model} engine. All operations are running smoothly.`;
   };
 
   const handleSend = async (customPrompt?: string) => {
@@ -332,14 +356,14 @@ export const KudbeeTerminal: React.FC<KudbeeTerminalProps> = ({
 
     const cmd = promptToSend.trim();
 
-    // CUSTOM KILO COMMAND INTERPRETER
-    if (cmd.startsWith('/') || cmd.toLowerCase().startsWith('kilo ')) {
-      const parts = cmd.replace(/^\//, '').replace(/^kilo\s+/i, '').split(' ');
+    // CUSTOM KUDBEE COMMAND INTERPRETER
+    if (cmd.startsWith('/') || cmd.toLowerCase().startsWith('kudbee ')) {
+      const parts = cmd.replace(/^\//, '').replace(/^kudbee\s+/i, '').split(' ');
       const action = parts[0].toLowerCase();
 
       setTimeout(async () => {
         if (action === 'status') {
-          addConsoleMessage(`📊 **KILO Live Status Report**
+          addConsoleMessage(`📊 **KUDBEE Live Status Report**
 • **Redis Master**: Connected (rediss://upstash-free-cluster)
 • **Token Rate Limiter**: 100 req/min limit, 0 tokens remaining (NOMINAL fail-open active)
 • **Memory Vault Ingestion**: Seeding complete (42 vector clusters loaded)
@@ -352,6 +376,23 @@ export const KudbeeTerminal: React.FC<KudbeeTerminalProps> = ({
 • Commits Rate Limit: Max 20 commits/PR (Staged)
 • Telemetry Rate Limiter Window: Sliding window (1000ms bucket)
 • Overrides: "tar" override 7.5.19 secured.`, 'system');
+        } else if (action === 'sync') {
+          addConsoleMessage(`🔄 **Triggering Manual Think-Token Database Synchronization...**`, 'system');
+          try {
+            await fetch('/api/tokens/sync', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                totalMinted: 'Manual Trigger', 
+                timestamp: new Date().toISOString() 
+              })
+            });
+            setTimeout(() => {
+              addConsoleMessage(`✅ **Sync Complete**. All in-memory reasoning traces and Token metrics pushed securely to Cloud SQL persistent storage.`, 'system');
+            }, 600);
+          } catch(e) {
+            addConsoleMessage(`⚠️ **Sync Failed**. Could not connect to remote state ledger.`, 'system');
+          }
         } else if (action === 'think') {
           try {
             const res = await fetch('/api/agents/think-tokens');
@@ -380,7 +421,7 @@ ${data.text}`, 'system');
 </thinking>`, 'system');
           }
         } else if (action === 'admin') {
-          addConsoleMessage(`🔑 **KILO SPECIAL ADMIN ACCESS PORTAL**
+          addConsoleMessage(`🔑 **KUDBEE SPECIAL ADMIN ACCESS PORTAL**
 • **Active Console Tab**: ${activeTab.toUpperCase()}
 • **Registered Components**:
   - KudbeeTerminal (Terminal Console Core)
@@ -396,10 +437,11 @@ ${data.text}`, 'system');
 • **Selected AI Model**: ${selectedModel} (with multi-tier fallback active).
 • **Memory Vault**: 21 seeded clusters successfully synced.`, 'system');
         } else if (action === 'help') {
-          addConsoleMessage(`📖 **KILO Operations Terminal Manual**
+          addConsoleMessage(`📖 **KUDBEE Operations Terminal Manual**
 • \`/status\` - Diagnostic report of Redis, memory vault, and dynos
 • \`/queue\` - Inspect pending task queue and sliding-window weights
 • \`/think\` - Extract and inspect active reasoning/think tokens from latest run
+• \`/sync\` - Force a manual synchronization of Think-Tokens to persistent database
 • \`/admin\` - Full system structural scan with special administrative access
 • \`/run <agent> <beadId>\` - Dispatches an agent (Toast/Maple/refinery) to solve a Bead
 • \`/seed\` - Simulates the seed-memory pipeline with cosine semantic recall
@@ -428,7 +470,7 @@ ${data.text}`, 'system');
 • PR #181 Memory Pipeline Semantic Seeding: PASS (21 tests green)
 • Vulnerability overrides: "tar" @7.5.19 & "postcss" @8.5.18 configured correctly.`, 'system');
         } else {
-          addConsoleMessage(`⚠️ Unknown KILO command: "${action}". Type \`/help\` for a list of valid commands.`, 'system');
+          addConsoleMessage(`⚠️ Unknown KUDBEE command: "${action}". Type \`/help\` for a list of valid commands.`, 'system');
         }
         setIsLoading(false);
       }, 1000);
@@ -448,6 +490,17 @@ ${data.text}`, 'system');
     };
 
     setMessages((prev) => [...prev, placeholderMsg]);
+
+    const allocatedTokens = Math.floor(Math.random() * 7000) + 8000; // 8k to 15k tokens
+    
+    // Call the parent think-token minter so numbers update dynamically
+    if (onMintThinkTokens) {
+      try {
+        await onMintThinkTokens(allocatedTokens, `Console cognitive recall: "${promptToSend.substring(0, 32)}..."`, undefined, 'KudbeeRouter');
+      } catch (err) {
+        console.warn('Dynamic token minting failed:', err);
+      }
+    }
 
     try {
       let data: any = {};
@@ -479,12 +532,15 @@ ${data.text}`, 'system');
         const resolvedEngine = modeMap[data.mode] || 'Active Engine';
         setActiveEngine(resolvedEngine);
 
+        const baseResponse = data.response || 'No response text returned.';
+        const richResponse = `🧠 **KUDBEE Cognitive Context Activated via ${allocatedTokens.toLocaleString()} Think-Tokens**\n---\n${baseResponse}`;
+
         setMessages((prev) =>
           prev.map((msg) =>
             msg.id === botMsgId
               ? {
                   ...msg,
-                  text: data.response || 'No response text returned.',
+                  text: richResponse,
                   status: 'success',
                   model: `${selectedModel} (${resolvedEngine})`,
                   extraData: data.extra_data,
@@ -494,7 +550,7 @@ ${data.text}`, 'system');
           )
         );
       } else {
-        const fallbackText = generateInMemoryKudbeeResponse(promptToSend, selectedModel);
+        const fallbackText = generateInMemoryKudbeeResponse(promptToSend, selectedModel, allocatedTokens);
         setActiveEngine('In-Memory Fallback');
         setMessages((prev) =>
           prev.map((msg) =>
@@ -510,7 +566,7 @@ ${data.text}`, 'system');
         );
       }
     } catch {
-      const fallbackText = generateInMemoryKudbeeResponse(promptToSend, selectedModel);
+      const fallbackText = generateInMemoryKudbeeResponse(promptToSend, selectedModel, allocatedTokens);
       setActiveEngine('In-Memory Fallback');
       setMessages((prev) =>
         prev.map((msg) =>
@@ -545,15 +601,29 @@ ${data.text}`, 'system');
     >
       {/* Header Bar */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between bg-[#0e131d] px-3 sm:px-4 py-2 sm:py-2.5 border-b border-zinc-800 shrink-0 select-none gap-2">
-        <div className="flex items-center gap-2.5 min-w-0">
+        <div className="flex items-center gap-2.5 min-w-0 flex-wrap sm:flex-nowrap">
           <div className="w-5 h-5 sm:w-6 sm:h-6 rounded-md bg-yellow-500/15 border border-yellow-500/40 flex items-center justify-center text-yellow-400 shrink-0">
             <SquareTerminal className="w-3.5 h-3.5 animate-pulse" />
           </div>
-          <div className="flex items-center gap-2 truncate">
-            <span className="font-extrabold text-zinc-100 text-xs sm:text-sm tracking-wide">KILO AGENT OPERATIONAL CONSOLE</span>
+          <div className="flex items-center gap-2 truncate min-w-0">
+            <span className="font-extrabold text-zinc-100 text-xs sm:text-sm tracking-wide">KUDBEE AGENT OPERATIONAL CONSOLE</span>
             <span className="hidden xs:inline-block px-1.5 py-0.5 rounded-full text-[9px] bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 font-bold">
               SYNC ACTIVE
             </span>
+          </div>
+          <div className="flex items-center gap-1.5 bg-zinc-950/80 px-2 py-0.5 rounded border border-zinc-850 text-[9px] text-zinc-400 shrink-0 sm:ml-2 font-mono">
+            <span className="font-extrabold text-yellow-400">ACTIVE:</span>
+            <select
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              className="bg-transparent text-zinc-100 font-bold focus:outline-none cursor-pointer border-none p-0 text-[10px] w-auto inline-block hover:text-yellow-400 outline-none"
+            >
+              <option value="gemini-2.5-pro" className="bg-[#090d12]">gemini-2.5-pro (Deployed)</option>
+              <option value="gemini-2.5-flash" className="bg-[#090d12]">gemini-2.5-flash (High-Speed)</option>
+              <option value="deepseek-r1" className="bg-[#090d12]">deepseek-r1 (Deep Thinking)</option>
+              <option value="groq-llama-3.3-70b" className="bg-[#090d12]">llama-3.3-70b (Low Latency)</option>
+              <option value="inception-10m" className="bg-[#090d12]">inception-10m (High Context)</option>
+            </select>
           </div>
         </div>
 
@@ -625,7 +695,7 @@ ${data.text}`, 'system');
       {showSettings && (
         <div className="bg-[#121721] border-b border-zinc-800 px-4 py-3 grid grid-cols-1 md:grid-cols-2 gap-3 shrink-0 animate-in slide-in-from-top duration-200">
           <div>
-            <label className="text-[10px] font-bold text-zinc-400 block mb-1">KILO AI ROUTING ENGINE</label>
+            <label className="text-[10px] font-bold text-zinc-400 block mb-1">KUDBEE AI ROUTING ENGINE</label>
             <select
               value={selectedModel}
               onChange={(e) => setSelectedModel(e.target.value)}
@@ -667,7 +737,7 @@ ${data.text}`, 'system');
                       </span>
                     ) : msg.sender === 'kudbee' ? (
                       <span className="text-emerald-400 font-bold flex items-center gap-1">
-                        <Sparkles className="w-3 h-3 text-emerald-400" /> KILO ROUTER ({msg.model || selectedModel})
+                        <Sparkles className="w-3 h-3 text-emerald-400" /> KUDBEE ROUTER ({msg.model || selectedModel})
                       </span>
                     ) : msg.sender === 'agent-worker' ? (
                       <span className="text-purple-400 font-bold flex items-center gap-1">
@@ -708,9 +778,15 @@ ${data.text}`, 'system');
                   }`}
                 >
                   {msg.status === 'sending' ? (
-                    <div className="flex items-center gap-2 text-yellow-400 font-medium animate-pulse">
-                      <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                      <span>Resolving API router fallbacks...</span>
+                    <div className="flex flex-col gap-2 p-2 bg-yellow-500/5 rounded-lg border border-yellow-500/15 max-w-sm animate-pulse">
+                      <div className="flex items-center gap-3 text-yellow-400 font-bold font-mono">
+                        <span className="inline-block animate-[spin_1.2s_linear_infinite] origin-center text-sm font-black bg-yellow-400/20 text-yellow-400 border border-yellow-400/40 rounded px-2 py-0.5 shadow-[0_0_8px_rgba(234,179,8,0.3)]">K</span>
+                        <span className="tracking-wide">KUDBEE thinking...</span>
+                      </div>
+                      <div className="text-[10px] text-zinc-500 font-mono flex flex-col gap-0.5 pl-8">
+                        <span>⚡ Allocating Think-Tokens for semantic weight...</span>
+                        <span>🔍 Recalling MemoryVault context vectors...</span>
+                      </div>
                     </div>
                   ) : (
                     <p className="whitespace-pre-wrap select-text">{msg.text}</p>

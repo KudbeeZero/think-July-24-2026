@@ -83,6 +83,12 @@ export default function App() {
     liveFeed,
     KILO_PROMPT_TEXT,
     
+    navHistory,
+    historyIndex,
+    handleGoBack,
+    handleGoForward,
+    handleNavigateToHistory,
+    
     handleAddBead,
     handleUpdateBeadStatus,
     handleUpdateBeadAssignee,
@@ -115,10 +121,29 @@ export default function App() {
     setSelectedAgent,
     setIsSpinUpModalOpen,
     setPromptCopied,
-    setLiveFeed
+    setLiveFeed,
+    setActiveModel,
+    handleMintThinkTokens,
+    syncThinkTokens,
+    agentHeartbeat
   } = useKilo();
 
+  // Periodic heartbeat and token sync
+  useEffect(() => {
+    const interval = setInterval(() => {
+      // Sync tokens to database every 30 seconds
+      syncThinkTokens();
+      
+      // Ping heartbeat for active agents
+      agents.forEach(agent => {
+        if (agent.status === 'working') {
+          agentHeartbeat(agent.id);
+        }
+      });
+    }, 30000);
 
+    return () => clearInterval(interval);
+  }, [syncThinkTokens, agentHeartbeat, agents]);
 
 
 
@@ -319,7 +344,7 @@ export default function App() {
             }`}
           >
             <span className="flex items-center gap-3">
-              <Brain className="w-4 h-4 text-yellow-400" /> KILO Token & Limits
+              <Brain className="w-4 h-4 text-yellow-400" /> KUDBEE Token & Limits
             </span>
             <span className="text-[9px] uppercase font-mono px-1.5 py-0.5 rounded bg-yellow-500/25 text-yellow-400 font-bold border border-yellow-500/10">
               Live API
@@ -546,6 +571,106 @@ export default function App() {
           </div>
         </header>
 
+        {/* Interactive Breadcrumbs & Back/Forward Bar */}
+        <div className="bg-[#111622] border-b border-zinc-800/80 px-4 sm:px-6 py-2 flex items-center justify-between text-xs font-mono select-none shrink-0 overflow-x-auto gap-3">
+          <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            {/* Back Arrow Button */}
+            <button
+              onClick={handleGoBack}
+              disabled={historyIndex === 0}
+              className={`p-1.5 rounded-md border border-zinc-805 bg-[#0d1117] transition-all flex items-center justify-center ${
+                historyIndex === 0
+                  ? 'text-zinc-650 opacity-40 cursor-not-allowed border-zinc-800/40 bg-zinc-900/20'
+                  : 'text-zinc-300 hover:text-yellow-400 hover:border-zinc-700 active:scale-95 cursor-pointer'
+              }`}
+              title="Navigate Back"
+            >
+              <ArrowLeft className="w-3.5 h-3.5" />
+            </button>
+
+            {/* Forward Arrow Button */}
+            <button
+              onClick={handleGoForward}
+              disabled={historyIndex === navHistory.length - 1}
+              className={`p-1.5 rounded-md border border-zinc-805 bg-[#0d1117] transition-all flex items-center justify-center ${
+                historyIndex === navHistory.length - 1
+                  ? 'text-zinc-655 opacity-40 cursor-not-allowed border-zinc-800/40 bg-zinc-900/20'
+                  : 'text-zinc-300 hover:text-yellow-400 hover:border-zinc-700 active:scale-95 cursor-pointer'
+              }`}
+              title="Navigate Forward"
+            >
+              <ChevronRight className="w-3.5 h-3.5" />
+            </button>
+            
+            <span className="w-[1px] h-4 bg-zinc-800 hidden xs:inline" />
+
+            {/* Breadcrumb Trail */}
+            <div className="flex items-center gap-1 sm:gap-1.5 text-[11px] text-zinc-400">
+              <button
+                onClick={() => {
+                  setActiveNav('overview');
+                  setSelectedBead(null);
+                  setSelectedAgent(null);
+                  setSelectedConvoy(null);
+                }}
+                className="hover:text-yellow-400 font-bold transition-colors cursor-pointer"
+              >
+                Kudbee
+              </button>
+              
+              <ChevronRight className="w-3 h-3 text-zinc-600 shrink-0" />
+
+              <button
+                onClick={() => {
+                  setActiveNav(activeNav);
+                  setSelectedBead(null);
+                  setSelectedAgent(null);
+                  setSelectedConvoy(null);
+                }}
+                className={`capitalize font-bold transition-colors cursor-pointer ${
+                  !selectedBead && !selectedAgent && !selectedConvoy ? 'text-zinc-200' : 'hover:text-yellow-400'
+                }`}
+              >
+                {activeNav.replace('-', ' ').replace('_', ' ')}
+              </button>
+
+              {/* Sub-breadcrumbs depending on selected elements */}
+              {selectedBead && (
+                <>
+                  <ChevronRight className="w-3 h-3 text-zinc-600 shrink-0" />
+                  <span className="text-blue-400 font-bold max-w-[120px] sm:max-w-[200px] truncate" title={selectedBead.title}>
+                    Bead {selectedBead.id}
+                  </span>
+                </>
+              )}
+
+              {selectedAgent && (
+                <>
+                  <ChevronRight className="w-3 h-3 text-zinc-600 shrink-0" />
+                  <span className="text-green-400 font-bold truncate">
+                    Agent {selectedAgent.name}
+                  </span>
+                </>
+              )}
+
+              {selectedConvoy && (
+                <>
+                  <ChevronRight className="w-3 h-3 text-zinc-600 shrink-0" />
+                  <span className="text-purple-400 font-bold max-w-[120px] sm:max-w-[200px] truncate" title={selectedConvoy.title}>
+                    Convoy {selectedConvoy.title}
+                  </span>
+                </>
+              )}
+            </div>
+          </div>
+
+          {/* Right Section: History dropdown/steps tracker */}
+          <div className="text-[10px] text-zinc-500 hidden md:flex items-center gap-1 bg-zinc-950/40 px-2 py-1 rounded border border-zinc-900 shrink-0">
+            <span className="font-bold text-yellow-500/80">History Stack:</span>
+            <span>{historyIndex + 1} of {navHistory.length} states</span>
+          </div>
+        </div>
+
         {/* View Switcher Output */}
         {activeNav === 'think-token-vault' ? (
           <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
@@ -625,7 +750,7 @@ export default function App() {
         <div className="flex items-center justify-between bg-[#0a0d12] border-b border-zinc-800/80 px-3 sm:px-4 py-3 sm:py-2 shrink-0">
           <div className="flex items-center gap-2 text-xs sm:text-xs font-semibold text-yellow-500">
             <SquareTerminal className="w-4 h-4 sm:w-4 sm:h-4 text-yellow-500" />
-            <span>Kilo Agent Dispatch Console</span>
+            <span>Kudbee Agent Dispatch Console</span>
           </div>
           <button
             onClick={() => setShowTerminalMobile(false)}
@@ -652,7 +777,7 @@ export default function App() {
                 </>
               ) : (
                 <>
-                  <Copy className="w-3 h-3" /> Copy Kilo Prompt
+                  <Copy className="w-3 h-3" /> Copy Kudbee Prompt
                 </>
               )}
             </button>
@@ -833,6 +958,9 @@ export default function App() {
         onAddBead={handleAddBead}
         agents={agents}
         convoys={convoys}
+        activeModel={activeModel}
+        setActiveModel={setActiveModel}
+        onMintThinkTokens={handleMintThinkTokens}
       />
     </div>
   );

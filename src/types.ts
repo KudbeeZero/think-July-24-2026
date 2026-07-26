@@ -196,4 +196,12 @@ export interface MailItem {
   severity?: 'info' | 'warning' | 'critical' | 'escalation';
 }
 
+export interface NavHistoryItem {
+  nav: string;
+  selectedBeadId?: string;
+  selectedAgentId?: string;
+  selectedConvoyId?: string;
+}
+
+
 

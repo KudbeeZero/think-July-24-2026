@@ -31,7 +31,7 @@ export const ResiliencyControls: React.FC<ResiliencyControlsProps> = ({
           Synapse Circuit Breakers (Chaos)
         </h3>
         <p className="text-[10px] text-zinc-400 leading-normal font-mono mb-4">
-          KILO insulates API failovers using Circuit Breakers. Test our resiliency framework by manually tripping individual service pipelines.
+          KUDBEE insulates API failovers using Circuit Breakers. Test our resiliency framework by manually tripping individual service pipelines.
         </p>
 
         <div className="space-y-3">

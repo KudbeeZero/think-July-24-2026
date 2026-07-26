@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Hexagon, GitBranch, Plus } from 'lucide-react';
 import { Convoy } from '../types';
+import { useDrawerA11y } from '../hooks/useDrawerA11y';
 
 interface NewRigModalProps {
   isOpen: boolean;
@@ -9,6 +10,11 @@ interface NewRigModalProps {
 }
 
 export function NewRigModal({ isOpen, onClose, onAddConvoy }: NewRigModalProps) {
+  const containerRef = useDrawerA11y<HTMLDivElement>({
+    isOpen,
+    onClose,
+  });
+
   const [title, setTitle] = useState('');
   const [branch, setBranch] = useState('convoy/phase-12-sprint');
   const [task1, setTask1] = useState('');
@@ -43,8 +49,19 @@ export function NewRigModal({ isOpen, onClose, onAddConvoy }: NewRigModalProps) 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="bg-[#161b22] border border-zinc-800 rounded-xl w-full max-w-md overflow-hidden shadow-2xl max-h-[90dvh] flex flex-col">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Create New Convoy or Rig"
+    >
+      <div
+        ref={containerRef}
+        className="bg-[#161b22] border border-zinc-800 rounded-xl w-full max-w-md overflow-hidden shadow-2xl max-h-[90dvh] flex flex-col"
+      >
         <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800 bg-[#0d1117] shrink-0">
           <div className="flex items-center gap-2">
             <Hexagon className="w-4 h-4 text-purple-400" />

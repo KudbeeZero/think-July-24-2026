@@ -21,7 +21,7 @@ export const DeviceSyncTopology: React.FC<DeviceSyncTopologyProps> = ({ devices 
         <div>
           <h3 className="text-xs font-bold text-zinc-100 uppercase tracking-wider flex items-center gap-1.5 font-mono">
             <Laptop className="w-4 h-4 text-blue-400 animate-pulse" />
-            KILO MULTI-DEVICE DB SYNC MESH
+            KUDBEE MULTI-DEVICE DB SYNC MESH
           </h3>
           <p className="text-[10px] text-zinc-500 font-mono">
             Real-time status of cache-synchronized edge nodes mapped to active Redis storage blocks.

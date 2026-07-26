@@ -726,7 +726,7 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
             </div>
           </div>
           <h2 className="text-xl sm:text-2xl font-bold text-zinc-100 mt-1 flex items-center gap-2 font-mono">
-            <Brain className="w-5 sm:w-6 h-5 sm:h-6 text-yellow-400" /> KILO Cognitive Brain & Token Console
+            <Brain className="w-5 sm:w-6 h-5 sm:h-6 text-yellow-400" /> KUDBEE Cognitive Brain & Token Console
           </h2>
           <p className="text-xs text-zinc-400 mt-1 font-mono">
             Real-time visual neural networks, active synapse controls, persistent local telemetry, and multi-device DB sync monitoring.

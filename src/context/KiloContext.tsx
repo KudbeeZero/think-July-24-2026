@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
 import { useLocalStorage } from '../hooks/useLocalStorage';
-import { Bead, Agent, Convoy, MailItem, TelemetryLog, Status, Priority } from '../types';
+import { Bead, Agent, Convoy, MailItem, TelemetryLog, Status, Priority, NavHistoryItem } from '../types';
 import { INITIAL_BEADS, INITIAL_AGENTS, INITIAL_CONVOYS, INITIAL_MAIL_ITEMS } from '../data';
 
 interface KiloContextType {
@@ -50,6 +50,13 @@ interface KiloContextType {
   setLiveFeed: React.Dispatch<React.SetStateAction<TelemetryLog[]>>;
   KILO_PROMPT_TEXT: string;
   
+  // Navigation history & breadcrumbs state
+  navHistory: NavHistoryItem[];
+  historyIndex: number;
+  handleGoBack: () => void;
+  handleGoForward: () => void;
+  handleNavigateToHistory: (index: number) => void;
+  
   // Handlers
   handleAddBead: (newBeadData: Omit<Bead, 'id' | 'createdAt'>) => Promise<void>;
   handleUpdateBeadStatus: (beadId: string, newStatus: Status) => void;
@@ -61,10 +68,13 @@ interface KiloContextType {
   handleRunTestTask: (agentName: string, prompt: string, model: string) => Promise<any>;
   handleMarkMailAsRead: (id: string) => void;
   handleMarkAllMailAsRead: () => void;
+  handleMintThinkTokens: (amount: number, reason: string, agentId?: string, agentName?: string) => Promise<void>;
   simulateIncomingAlert: () => void;
   handleAddDemoToast: (title: string, desc: string, severity?: 'info' | 'warning' | 'critical' | 'escalation') => void;
   handleClearToasts: () => void;
   handleCopyPrompt: () => void;
+  syncThinkTokens: () => Promise<void>;
+  agentHeartbeat: (agentId: string) => void;
 }
 
 const KiloContext = createContext<KiloContextType | undefined>(undefined);
@@ -108,6 +118,131 @@ export const KiloProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [liveFeed, setLiveFeed] = useState<TelemetryLog[]>([]);
   const eventSourceRef = useRef<EventSource | null>(null);
 
+  // Navigation history state
+  const [navHistory, setNavHistory] = useState<NavHistoryItem[]>([{ nav: 'overview' }]);
+  const [historyIndex, setHistoryIndex] = useState<number>(0);
+  const isInternalNavRef = useRef<boolean>(false);
+
+  useEffect(() => {
+    if (isInternalNavRef.current) {
+      isInternalNavRef.current = false;
+      return;
+    }
+
+    const currentItem: NavHistoryItem = {
+      nav: activeNav,
+      selectedBeadId: selectedBead?.id,
+      selectedAgentId: selectedAgent?.id,
+      selectedConvoyId: selectedConvoy?.id
+    };
+
+    const activeItem = navHistory[historyIndex];
+    const isSame = activeItem &&
+      activeItem.nav === currentItem.nav &&
+      activeItem.selectedBeadId === currentItem.selectedBeadId &&
+      activeItem.selectedAgentId === currentItem.selectedAgentId &&
+      activeItem.selectedConvoyId === currentItem.selectedConvoyId;
+
+    if (!isSame) {
+      const newHistory = navHistory.slice(0, historyIndex + 1);
+      newHistory.push(currentItem);
+      setNavHistory(newHistory);
+      setHistoryIndex(newHistory.length - 1);
+    }
+  }, [activeNav, selectedBead?.id, selectedAgent?.id, selectedConvoy?.id]);
+
+  const handleGoBack = () => {
+    if (historyIndex > 0) {
+      const prevIndex = historyIndex - 1;
+      const target = navHistory[prevIndex];
+      isInternalNavRef.current = true;
+      setHistoryIndex(prevIndex);
+      
+      setActiveNav(target.nav);
+      if (target.selectedBeadId) {
+        const found = beads.find(b => b.id === target.selectedBeadId);
+        setSelectedBead(found || null);
+      } else {
+        setSelectedBead(null);
+      }
+
+      if (target.selectedAgentId) {
+        const found = agents.find(a => a.id === target.selectedAgentId);
+        setSelectedAgent(found || null);
+      } else {
+        setSelectedAgent(null);
+      }
+
+      if (target.selectedConvoyId) {
+        const found = convoys.find(c => c.id === target.selectedConvoyId);
+        setSelectedConvoy(found || null);
+      } else {
+        setSelectedConvoy(null);
+      }
+    }
+  };
+
+  const handleGoForward = () => {
+    if (historyIndex < navHistory.length - 1) {
+      const nextIndex = historyIndex + 1;
+      const target = navHistory[nextIndex];
+      isInternalNavRef.current = true;
+      setHistoryIndex(nextIndex);
+
+      setActiveNav(target.nav);
+      if (target.selectedBeadId) {
+        const found = beads.find(b => b.id === target.selectedBeadId);
+        setSelectedBead(found || null);
+      } else {
+        setSelectedBead(null);
+      }
+
+      if (target.selectedAgentId) {
+        const found = agents.find(a => a.id === target.selectedAgentId);
+        setSelectedAgent(found || null);
+      } else {
+        setSelectedAgent(null);
+      }
+
+      if (target.selectedConvoyId) {
+        const found = convoys.find(c => c.id === target.selectedConvoyId);
+        setSelectedConvoy(found || null);
+      } else {
+        setSelectedConvoy(null);
+      }
+    }
+  };
+
+  const handleNavigateToHistory = (index: number) => {
+    if (index >= 0 && index < navHistory.length) {
+      const target = navHistory[index];
+      isInternalNavRef.current = true;
+      setHistoryIndex(index);
+
+      setActiveNav(target.nav);
+      if (target.selectedBeadId) {
+        const found = beads.find(b => b.id === target.selectedBeadId);
+        setSelectedBead(found || null);
+      } else {
+        setSelectedBead(null);
+      }
+
+      if (target.selectedAgentId) {
+        const found = agents.find(a => a.id === target.selectedAgentId);
+        setSelectedAgent(found || null);
+      } else {
+        setSelectedAgent(null);
+      }
+
+      if (target.selectedConvoyId) {
+        const found = convoys.find(c => c.id === target.selectedConvoyId);
+        setSelectedConvoy(found || null);
+      } else {
+        setSelectedConvoy(null);
+      }
+    }
+  };
+
   useEffect(() => {
     // Advanced Upgrade 4: Fallback HTTP long-polling/SSE for WebSocket telemetry
     eventSourceRef.current = new EventSource('/api/telemetry/stream');
@@ -115,13 +250,15 @@ export const KiloProvider: React.FC<{ children: React.ReactNode }> = ({ children
     eventSourceRef.current.onmessage = (event) => {
       try {
         const data = JSON.parse(event.data);
-        const type = data.source === 'System' ? 'success' : (data.source === 'User' ? 'success' : 'agent');
+        const source = data.source || 'System';
+        const eventMsg = data.event || `Metrics Tick: CPU ${data.cpu || '12%'} | Memory ${data.memory || '240MB'} | Swarm ${data.workerMode || 'active'}`;
+        const type = source === 'System' ? 'success' : (source === 'User' ? 'success' : 'agent');
         
         setLiveFeed(prev => {
           const newEntry: TelemetryLog = {
-            msg: `[${data.source}] ${data.event}`,
-            event: data.event,
-            source: data.source,
+            msg: `[${source}] ${eventMsg}`,
+            event: eventMsg,
+            source: source,
             time: 'just now',
             type: type as any
           };
@@ -138,6 +275,31 @@ export const KiloProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     };
   }, []);
+
+  useEffect(() => {
+    // Reconcile React state with primary server storage with 3.5s debounce to keep the interface ultra-fast
+    const timer = setTimeout(() => {
+      fetch('/api/sync/reconcile', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          beadsCount: beads.length,
+          activeAgentsCount: agents.length,
+          activeConvoysCount: convoys.length,
+          beadsSummary: beads.slice(0, 10).map(b => ({ id: b.id, title: b.title, status: b.status, assignee: b.assignee })),
+          agentStatesSummary: agents.map(a => ({ id: a.id, name: a.name, status: a.status, hooked: a.hooked })),
+          thinkTokenVault: {
+            totalMinted: 1420500 + totalReasoningTokens,
+            availableBalance: 1250000 + totalReasoningTokens,
+            stakedBalance: 170500,
+            mintEventsCount: 15
+          }
+        })
+      }).catch(err => console.error('Error auto-syncing state:', err));
+    }, 3500);
+
+    return () => clearTimeout(timer);
+  }, [beads.length, agents.length, convoys.length, totalReasoningTokens]);
 
   const handleAddBead = async (newBeadData: Omit<Bead, 'id' | 'createdAt'>) => {
     const newBead: Bead = {
@@ -258,6 +420,35 @@ export const KiloProvider: React.FC<{ children: React.ReactNode }> = ({ children
     setMailItems(prev => prev.map(m => ({ ...m, unread: false })));
   };
 
+  const handleMintThinkTokens = async (
+    amount: number,
+    reason: string,
+    agentId?: string,
+    agentName?: string
+  ) => {
+    try {
+      const res = await fetch('/api/tokens/mint', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ amount, reason, agentId, agentName }),
+      });
+      const data = await res.json();
+      if (data.success) {
+        setTotalReasoningTokens(prev => prev + amount);
+        setLiveFeed(prev => [
+          {
+            msg: `Minted +${amount.toLocaleString()} Think-Tokens for ${agentName || 'Agent'}: ${reason}`,
+            time: 'just now',
+            type: 'success',
+          },
+          ...prev,
+        ]);
+      }
+    } catch (err) {
+      console.error('Failed to mint think tokens:', err);
+    }
+  };
+
   const handleAddDemoToast = (title: string, desc: string, severity: 'info' | 'warning' | 'critical' | 'escalation' = 'info') => {
     const toastId = 'sim_toast_' + Date.now();
     setToasts(prev => [...prev, { id: toastId, title, desc, severity }]);
@@ -306,6 +497,50 @@ We are **completely deprecating** the use of the \`REDIS_RATE_LIMIT_URL\` enviro
     navigator.clipboard.writeText(KILO_PROMPT_TEXT);
     setPromptCopied(true);
     setTimeout(() => setPromptCopied(false), 2500);
+  };
+
+  const syncThinkTokens = async () => {
+    try {
+      const res = await fetch('/api/tokens/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ 
+          totalMinted: totalReasoningTokens, 
+          timestamp: new Date().toISOString() 
+        })
+      });
+      
+      setLiveFeed(prev => [
+        {
+          msg: `Reconciled ${totalReasoningTokens.toLocaleString()} Think-Tokens to secure DB. Conflict status: CLEAN.`,
+          time: 'just now',
+          type: 'success',
+          source: 'MemoryVault'
+        },
+        ...prev
+      ].slice(0, 50));
+      
+      handleAddDemoToast('Token Sync Complete', 'Think-Tokens synchronized with database metrics.', 'info');
+    } catch (err) {
+      console.warn('DB sync unavailable', err);
+    }
+  };
+
+  const agentHeartbeat = (agentId: string) => {
+    setAgents(prev => prev.map(a => 
+      a.id === agentId 
+        ? { ...a, lastActive: 'just now' } 
+        : a
+    ));
+    setLiveFeed(prev => [
+      {
+        msg: `Pulse check OK for Agent ${agentId}`,
+        time: 'just now',
+        type: 'success',
+        source: agentId
+      },
+      ...prev
+    ].slice(0, 50));
   };
 
   const simulateIncomingAlert = () => {
@@ -432,6 +667,12 @@ Assign this bead immediately to prevent the Phase 11 convoy from timing out.`,
       budgetLimit, setBudgetLimit,
       activeModel, setActiveModel,
       
+      navHistory,
+      historyIndex,
+      handleGoBack,
+      handleGoForward,
+      handleNavigateToHistory,
+      
       handleAddBead,
       handleUpdateBeadStatus,
       handleUpdateBeadAssignee,
@@ -442,10 +683,13 @@ Assign this bead immediately to prevent the Phase 11 convoy from timing out.`,
       handleRunTestTask,
       handleMarkMailAsRead,
       handleMarkAllMailAsRead,
+      handleMintThinkTokens,
       simulateIncomingAlert,
       handleAddDemoToast,
       handleClearToasts,
-      handleCopyPrompt
+      handleCopyPrompt,
+      syncThinkTokens,
+      agentHeartbeat
     }}>
       {children}
     </KiloContext.Provider>

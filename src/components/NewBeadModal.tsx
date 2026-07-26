@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { X, Plus, Tag, AlertCircle, User, FileText } from 'lucide-react';
 import { Bead, Priority, BeadType, Status } from '../types';
+import { useDrawerA11y } from '../hooks/useDrawerA11y';
 
 interface NewBeadModalProps {
   isOpen: boolean;
@@ -9,6 +10,11 @@ interface NewBeadModalProps {
 }
 
 export function NewBeadModal({ isOpen, onClose, onAddBead }: NewBeadModalProps) {
+  const containerRef = useDrawerA11y<HTMLDivElement>({
+    isOpen,
+    onClose,
+  });
+
   const [title, setTitle] = useState('');
   const [priority, setPriority] = useState<Priority>('medium');
   const [type, setType] = useState<BeadType>('issue');
@@ -50,8 +56,19 @@ export function NewBeadModal({ isOpen, onClose, onAddBead }: NewBeadModalProps) 
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4">
-      <div className="bg-[#161b22] border border-zinc-800 rounded-xl w-full max-w-md overflow-hidden shadow-2xl max-h-[90dvh] flex flex-col">
+    <div
+      className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Create New Bead"
+    >
+      <div
+        ref={containerRef}
+        className="bg-[#161b22] border border-zinc-800 rounded-xl w-full max-w-md overflow-hidden shadow-2xl max-h-[90dvh] flex flex-col"
+      >
         <div className="flex items-center justify-between px-5 py-4 border-b border-zinc-800 bg-[#0d1117] shrink-0">
           <div className="flex items-center gap-2">
             <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
