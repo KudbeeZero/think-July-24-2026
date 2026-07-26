@@ -23,6 +23,8 @@ import { groqBreaker, deepseekBreaker } from "./src/server/circuitBreaker";
 import { db } from "./src/db/main";
 import { agentDb } from "./src/db/agent";
 import * as schema from "./src/db/schema";
+import { globalErrorHandler } from "./src/middleware/errorHandler.ts";
+import { env } from "./src/lib/env.ts";
 
 dotenv.config();
 
@@ -130,7 +132,7 @@ async function startServer() {
   });
 
   console.log('Starting GitHub Sync Daemon Cluster...');
-  const githubSync = spawn('npx', ['tsx', 'services/github_agent.ts'], {
+  const githubSync = spawn('npx', ['tsx', 'app/applet/services/github_agent.ts'], {
     stdio: 'inherit',
     cwd: process.cwd()
   });
@@ -1446,6 +1448,9 @@ async function startServer() {
       res.sendFile(path.join(distPath, 'index.html'));
     });
   }
+
+  // === Global Express Error Handler Middleware ===
+  app.use(globalErrorHandler);
 
   // Spawn Python Grok API Wrapper on port 6969
   try {

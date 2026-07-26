@@ -26,6 +26,7 @@
         "redis": "^6.1.0",
         "serve": "^14.2.6",
         "vite": "^6.2.3",
+        "zod": "^4.4.3",
       },
       "devDependencies": {
         "@types/express": "^4.17.21",

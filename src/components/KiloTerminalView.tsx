@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useKilo } from '../context/KiloContext';
+// @ts-ignore
 import { FixedSizeList } from 'react-window';
 import { 
   Brain, 

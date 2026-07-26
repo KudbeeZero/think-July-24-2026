@@ -1,4 +1,5 @@
 import React from 'react';
+// @ts-ignore
 import { FixedSizeList as List } from 'react-window';
 
 interface LogItem {
