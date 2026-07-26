@@ -192,7 +192,7 @@ export default function App() {
           </button>
         </div>
 
-        <div className="px-4 py-2 flex items-center gap-3 mb-6">
+        <div className="px-4 py-2 flex items-center gap-3 mb-2 shrink-0">
           <div className="w-8 h-8 rounded-lg bg-yellow-500/20 border border-yellow-500/30 flex items-center justify-center text-yellow-500 font-bold">
             <Crown className="w-4 h-4" />
           </div>
@@ -205,7 +205,11 @@ export default function App() {
           </div>
         </div>
 
-        <div className="px-4 mb-2 text-[10px] font-bold text-zinc-500 tracking-wider">NAVIGATION</div>
+        {/* Scrollable navigation container for mobile screen & landscape safety */}
+        <div className="flex-1 overflow-y-auto custom-scrollbar px-1 py-2 space-y-6 min-h-0">
+          {/* Navigation Section */}
+          <div>
+            <div className="px-3 mb-2 text-[10px] font-bold text-zinc-500 tracking-wider uppercase">Navigation</div>
         <nav className="flex flex-col gap-0.5 px-2 mb-6">
           <button
             onClick={() => {
@@ -385,18 +389,21 @@ export default function App() {
             </span>
           </button>
         </nav>
+        </div> {/* Closing Navigation Section */}
 
-        <div className="px-4 mb-2 flex items-center justify-between text-[10px] font-bold text-zinc-500 tracking-wider">
-          <span>RIGS & CONVOYS</span>
-          <button
-            onClick={() => setIsNewRigOpen(true)}
-            className="hover:text-yellow-400 text-xs transition-colors"
-            title="New Rig"
-          >
-            + New
-          </button>
-        </div>
-        <nav className="flex flex-col gap-0.5 px-2 mb-6">
+        {/* Rigs & Convoys Section */}
+        <div>
+          <div className="px-3 mb-2 flex items-center justify-between text-[10px] font-bold text-zinc-500 tracking-wider uppercase">
+            <span>Rigs & Convoys</span>
+            <button
+              onClick={() => setIsNewRigOpen(true)}
+              className="hover:text-yellow-400 text-xs transition-colors p-1"
+              title="New Rig"
+            >
+              + New
+            </button>
+          </div>
+          <nav className="flex flex-col gap-0.5 px-1.5">
           {convoys.map((c) => (
             <button
               key={c.id}
@@ -413,15 +420,17 @@ export default function App() {
             </button>
           ))}
         </nav>
+        </div> {/* Closing Rigs & Convoys Section */}
 
         {/* System Topology Map */}
-        <div className="px-4 mb-2 flex items-center justify-between">
-          <span className="text-[10px] font-bold text-zinc-500 tracking-wider">SYSTEM TOPOLOGY</span>
-          <span className="text-[9px] font-mono text-emerald-400 font-bold flex items-center gap-1">
-            <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" /> 5 SWARM NODES
-          </span>
-        </div>
-        <div className="px-4 mb-4 flex justify-center">
+        <div>
+          <div className="px-3 mb-2 flex items-center justify-between">
+            <span className="text-[10px] font-bold text-zinc-500 tracking-wider uppercase">System Topology</span>
+            <span className="text-[9px] font-mono text-emerald-400 font-bold flex items-center gap-1">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" /> 5 SWARM NODES
+            </span>
+          </div>
+          <div className="px-3 flex justify-center">
           <div className="relative w-full aspect-square max-w-[210px] flex items-center justify-center bg-[#080c11] border border-zinc-800/80 rounded-2xl p-2 shadow-inner">
             {/* Background Glow */}
             <div className="absolute inset-0 bg-yellow-500/5 rounded-2xl blur-xl pointer-events-none" />
@@ -490,9 +499,11 @@ export default function App() {
               <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-purple-400 border-2 border-[#080c11] animate-ping" />
             </div>
           </div>
-        </div>
+          </div>
+          </div> {/* Closing System Topology Section */}
+        </div> {/* Closing Scroll Container */}
 
-        <div className="mt-auto p-4 border-t border-zinc-800/60">
+        <div className="mt-auto p-4 border-t border-[#1f2937]/50 bg-[#0d1117] shrink-0">
           <button
             onClick={() => {
               setActiveNav('settings');
@@ -883,68 +894,79 @@ export default function App() {
         onRunTestTask={handleRunTestTask}
       />
       
-      {/* Mobile Bottom Navigation */}
-      <div className="lg:hidden fixed bottom-0 inset-x-0 h-[calc(68px+env(safe-area-inset-bottom))] pb-[env(safe-area-inset-bottom)] bg-[#0d1117]/95 backdrop-blur-lg border-t border-zinc-800/80 z-40 flex items-center justify-around px-2">
+      {/* Mobile Bottom Navigation - Compact, scroll-safe, and landscape-viewport optimized */}
+      <div className="lg:hidden fixed bottom-0 inset-x-0 h-14 xs:h-16 pb-[env(safe-area-inset-bottom)] bg-[#0d1117]/95 backdrop-blur-lg border-t border-zinc-800/80 z-40 flex items-center justify-between px-2 overflow-x-auto no-scrollbar select-none gap-1 max-w-xl mx-auto shadow-[0_-8px_24px_rgba(0,0,0,0.6)]">
         <button 
           onClick={() => { setActiveNav('overview'); setIsSidebarOpen(false); }} 
-          className={`flex flex-col items-center justify-center w-16 h-full gap-1.5 transition-colors relative ${activeNav === 'overview' ? 'text-yellow-400 font-semibold' : 'text-zinc-500 hover:text-zinc-400'}`}
+          className={`flex flex-col items-center justify-center flex-1 min-w-[50px] h-full gap-1 transition-all relative ${activeNav === 'overview' ? 'text-yellow-400 font-bold scale-105' : 'text-zinc-500 hover:text-zinc-400'}`}
         >
-          {activeNav === 'overview' && <span className="absolute top-0 inset-x-3 h-0.5 bg-yellow-400 rounded-full" />}
-          <LayoutGrid className="w-5 h-5" />
-          <span className="text-[9px] font-medium tracking-wide">Overview</span>
+          {activeNav === 'overview' && <span className="absolute top-0 inset-x-2 h-0.5 bg-yellow-400 rounded-full animate-pulse" />}
+          <LayoutGrid className="w-4 h-4 xs:w-5 xs:h-5" />
+          <span className="text-[8px] xs:text-[9px] font-medium tracking-wide">Overview</span>
         </button>
+        
         <button 
           onClick={() => { setActiveNav('beads'); setIsSidebarOpen(false); }} 
-          className={`flex flex-col items-center justify-center w-16 h-full gap-1.5 transition-colors relative ${activeNav === 'beads' ? 'text-blue-400 font-semibold' : 'text-zinc-500 hover:text-zinc-400'}`}
+          className={`flex flex-col items-center justify-center flex-1 min-w-[50px] h-full gap-1 transition-all relative ${activeNav === 'beads' ? 'text-blue-400 font-bold scale-105' : 'text-zinc-500 hover:text-zinc-400'}`}
         >
-          {activeNav === 'beads' && <span className="absolute top-0 inset-x-3 h-0.5 bg-blue-400 rounded-full" />}
-          <Hexagon className="w-5 h-5" />
-          <span className="text-[9px] font-medium tracking-wide">Beads</span>
-          {openCount > 0 ? (
-            <span className="absolute top-1 right-2.5 px-1 py-0.5 text-[8px] font-bold font-mono bg-red-500 text-white rounded-full leading-none scale-90">
-              {openCount}
-            </span>
-          ) : (
-            <span className="absolute top-1 right-3 w-2 h-2 bg-blue-500 rounded-full" />
-          )}
+          {activeNav === 'beads' && <span className="absolute top-0 inset-x-2 h-0.5 bg-blue-400 rounded-full animate-pulse" />}
+          <div className="relative">
+            <Hexagon className="w-4 h-4 xs:w-5 xs:h-5" />
+            {openCount > 0 ? (
+              <span className="absolute -top-1 -right-1 px-1 py-0.5 text-[7px] font-bold font-mono bg-red-500 text-white rounded-full leading-none scale-75">
+                {openCount}
+              </span>
+            ) : (
+              <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-blue-500 rounded-full" />
+            )}
+          </div>
+          <span className="text-[8px] xs:text-[9px] font-medium tracking-wide">Beads</span>
         </button>
+
         <button 
           onClick={() => { setActiveNav('agents'); setIsSidebarOpen(false); }} 
-          className={`flex flex-col items-center justify-center w-16 h-full gap-1.5 transition-colors relative ${activeNav === 'agents' ? 'text-green-400 font-semibold' : 'text-zinc-500 hover:text-zinc-400'}`}
+          className={`flex flex-col items-center justify-center flex-1 min-w-[50px] h-full gap-1 transition-all relative ${activeNav === 'agents' ? 'text-green-400 font-bold scale-105' : 'text-zinc-500 hover:text-zinc-400'}`}
         >
-          {activeNav === 'agents' && <span className="absolute top-0 inset-x-3 h-0.5 bg-green-400 rounded-full" />}
-          <Bot className="w-5 h-5" />
-          <span className="text-[9px] font-medium tracking-wide">Agents</span>
+          {activeNav === 'agents' && <span className="absolute top-0 inset-x-2 h-0.5 bg-green-400 rounded-full animate-pulse" />}
+          <Bot className="w-4 h-4 xs:w-5 xs:h-5" />
+          <span className="text-[8px] xs:text-[9px] font-medium tracking-wide">Agents</span>
         </button>
+
         <button 
           onClick={() => { setActiveNav('mail'); setIsSidebarOpen(false); }} 
-          className={`flex flex-col items-center justify-center w-16 h-full gap-1.5 transition-colors relative ${activeNav === 'mail' ? 'text-amber-400 font-semibold' : 'text-zinc-500 hover:text-zinc-400'}`}
+          className={`flex flex-col items-center justify-center flex-1 min-w-[50px] h-full gap-1 transition-all relative ${activeNav === 'mail' ? 'text-amber-400 font-bold scale-105' : 'text-zinc-500 hover:text-zinc-400'}`}
         >
-          {activeNav === 'mail' && <span className="absolute top-0 inset-x-3 h-0.5 bg-amber-400 rounded-full" />}
-          <Mail className="w-5 h-5" />
-          <span className="text-[9px] font-medium tracking-wide">Mail</span>
-          {unreadMailCount > 0 && (
-            <span className="absolute top-1 right-2 px-1.5 py-0.5 text-[8px] font-bold font-mono bg-amber-500 text-zinc-950 rounded-full animate-pulse leading-none scale-95 shadow-[0_0_8px_rgba(245,158,11,0.4)]">
-              {unreadMailCount}
-            </span>
-          )}
+          {activeNav === 'mail' && <span className="absolute top-0 inset-x-2 h-0.5 bg-amber-400 rounded-full animate-pulse" />}
+          <div className="relative">
+            <Mail className="w-4 h-4 xs:w-5 xs:h-5" />
+            {unreadMailCount > 0 && (
+              <span className="absolute -top-1 -right-1.5 px-1 py-0.5 text-[7px] font-bold font-mono bg-amber-500 text-zinc-950 rounded-full animate-pulse leading-none scale-75 shadow-md">
+                {unreadMailCount}
+              </span>
+            )}
+          </div>
+          <span className="text-[8px] xs:text-[9px] font-medium tracking-wide">Mail</span>
         </button>
+
         <button 
           onClick={() => { setActiveNav('kilo-terminal'); setIsSidebarOpen(false); }} 
-          className={`flex flex-col items-center justify-center w-16 h-full gap-1.5 transition-colors relative ${activeNav === 'kilo-terminal' ? 'text-yellow-400 font-semibold' : 'text-zinc-500 hover:text-zinc-400'}`}
+          className={`flex flex-col items-center justify-center flex-1 min-w-[50px] h-full gap-1 transition-all relative ${activeNav === 'kilo-terminal' ? 'text-yellow-400 font-bold scale-105' : 'text-zinc-500 hover:text-zinc-400'}`}
         >
-          {activeNav === 'kilo-terminal' && <span className="absolute top-0 inset-x-3 h-0.5 bg-yellow-400 rounded-full" />}
-          <Brain className="w-5 h-5 text-yellow-400" />
-          <span className="text-[9px] font-medium tracking-wide">Console</span>
+          {activeNav === 'kilo-terminal' && <span className="absolute top-0 inset-x-2 h-0.5 bg-yellow-400 rounded-full animate-pulse" />}
+          <Brain className="w-4 h-4 xs:w-5 xs:h-5 text-yellow-400" />
+          <span className="text-[8px] xs:text-[9px] font-medium tracking-wide">Console</span>
         </button>
+
         <button 
           onClick={() => { setActiveNav('tracker'); setIsSidebarOpen(false); }} 
-          className={`flex flex-col items-center justify-center w-16 h-full gap-1.5 transition-colors relative ${activeNav === 'tracker' ? 'text-[#e5ff55]' : 'text-zinc-500 hover:text-zinc-400'}`}
+          className={`flex flex-col items-center justify-center flex-1 min-w-[50px] h-full gap-1 transition-all relative ${activeNav === 'tracker' ? 'text-[#e5ff55]' : 'text-zinc-500 hover:text-zinc-400'}`}
         >
-          {activeNav === 'tracker' && <span className="absolute top-0 inset-x-3 h-0.5 bg-[#e5ff55] rounded-full" />}
-          <CheckCircle2 className="w-5 h-5" />
-          <span className="text-[9px] font-medium tracking-wide">Tracker</span>
-          <span className="absolute top-1 right-3 w-1.5 h-1.5 bg-[#e5ff55] rounded-full" />
+          {activeNav === 'tracker' && <span className="absolute top-0 inset-x-2 h-0.5 bg-[#e5ff55] rounded-full animate-pulse" />}
+          <div className="relative">
+            <CheckCircle2 className="w-4 h-4 xs:w-5 xs:h-5" />
+            <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-[#e5ff55] rounded-full" />
+          </div>
+          <span className="text-[8px] xs:text-[9px] font-medium tracking-wide">Tracker</span>
         </button>
       </div>
 

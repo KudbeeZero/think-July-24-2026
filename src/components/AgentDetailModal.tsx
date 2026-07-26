@@ -1,7 +1,47 @@
 import React from 'react';
-import { X, Bot, Shield, Cpu, HardDrive, Terminal, Play, Pause, RefreshCw } from 'lucide-react';
+import { X, Bot, Shield, Cpu, HardDrive, Terminal, Play, Pause, RefreshCw, Plus } from 'lucide-react';
 import { Agent } from '../types';
 import { useDrawerA11y } from '../hooks/useDrawerA11y';
+import { useKilo } from '../context/KiloContext';
+
+const AVAILABLE_SKILLS = [
+  'Drizzle Schema Migration',
+  'Redis Resiliency & Fail-Open',
+  'Memory Pipeline & Semantic Recall',
+  'Google Maps Platform Checkout',
+  'OAuth Popup Integrations',
+  'Workspace API Sheet Integrations',
+  'PCA Reducer Compiler',
+  'Relational Database Sync',
+  'Fail-Open Rate Limiter',
+  'Middleware Guard Routing',
+  'Upstash Redis Fallback',
+  'Google Maps Geolocation',
+  'Interactive Store Locators'
+];
+
+const AVAILABLE_PLUGINS = [
+  'Drizzle DDL Engine',
+  'Upstash Redis Failover Shield',
+  'MemoryVault SQLite Indexer',
+  'Google Maps JS Autocomplete',
+  'OAuth Identity Gateway',
+  'Gmail Workspace Hook',
+  'Cloud SQL Executor',
+  'Places Autocomplete Widget'
+];
+
+const AVAILABLE_TAGS = [
+  'Think-Tokens',
+  'Fast-Tokens',
+  'Fail-Open',
+  'Postgres-Sync',
+  'Cosine-Semantic',
+  'Verified-Trace',
+  'Resilient-Pipe',
+  'Maps-Widget',
+  'OAuth-Flow'
+];
 
 interface AgentDetailModalProps {
   agent: Agent | null;
@@ -18,19 +58,61 @@ export function AgentDetailModal({ agent, onClose, onToggleStatus, onRunTestTask
 
   if (!agent) return null;
 
+  const { agents, setAgents } = useKilo();
+  const currentAgent = agents.find(a => a.id === agent.id) || agent;
+
   const [agentPrompt, setAgentPrompt] = React.useState('');
   const [isRunningTask, setIsRunningTask] = React.useState(false);
   const [taskOutput, setTaskOutput] = React.useState<string | null>(null);
 
-  const isWorking = agent.status === 'working';
-  const Icon = agent.icon === 'shield' ? Shield : Bot;
+  const isWorking = currentAgent.status === 'working';
+  const Icon = currentAgent.icon === 'shield' ? Shield : Bot;
 
   // Calculate dynamic CPU Usage based on status
-  const cpuVal = isWorking ? ((agent.name.length * 4.3 + 12.8) % 25 + 14.1).toFixed(1) : '0.1';
+  const cpuVal = isWorking ? ((currentAgent.name.length * 4.3 + 12.8) % 25 + 14.1).toFixed(1) : '0.1';
   const cpuPct = isWorking ? Math.min(100, Math.round(parseFloat(cpuVal))) : 1;
 
   // Calculate Memory Usage
-  const memK = isWorking ? Math.round((agent.reasoningTokensSpent || 62410) / 1000) : 12;
+  const memK = isWorking ? Math.round((currentAgent.reasoningTokensSpent || 62410) / 1000) : 12;
+
+  const toggleSkill = (skill: string) => {
+    setAgents(prev => prev.map(a => {
+      if (a.id === currentAgent.id) {
+        const currentSkills = a.skills || [];
+        const updatedSkills = currentSkills.includes(skill)
+          ? currentSkills.filter(s => s !== skill)
+          : [...currentSkills, skill];
+        return { ...a, skills: updatedSkills };
+      }
+      return a;
+    }));
+  };
+
+  const togglePlugin = (plugin: string) => {
+    setAgents(prev => prev.map(a => {
+      if (a.id === currentAgent.id) {
+        const currentPlugins = a.plugins || [];
+        const updatedPlugins = currentPlugins.includes(plugin)
+          ? currentPlugins.filter(p => p !== plugin)
+          : [...currentPlugins, plugin];
+        return { ...a, plugins: updatedPlugins };
+      }
+      return a;
+    }));
+  };
+
+  const toggleTag = (tag: string) => {
+    setAgents(prev => prev.map(a => {
+      if (a.id === currentAgent.id) {
+        const currentTags = a.tags || [];
+        const updatedTags = currentTags.includes(tag)
+          ? currentTags.filter(t => t !== tag)
+          : [...currentTags, tag];
+        return { ...a, tags: updatedTags };
+      }
+      return a;
+    }));
+  };
 
   const handleExecuteTask = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,9 +123,9 @@ export function AgentDetailModal({ agent, onClose, onToggleStatus, onRunTestTask
 
     try {
       if (!isWorking) {
-        onToggleStatus(agent.id);
+        onToggleStatus(currentAgent.id);
       }
-      const res = await onRunTestTask(agent.name, agentPrompt, agent.model || 'grok-3-fast');
+      const res = await onRunTestTask(currentAgent.name, agentPrompt, currentAgent.model || 'grok-3-fast');
       setTaskOutput(res.response || 'Task executed cleanly.');
       setAgentPrompt('');
     } catch (err: any) {
@@ -153,13 +235,163 @@ export function AgentDetailModal({ agent, onClose, onToggleStatus, onRunTestTask
             </div>
           </div>
 
+          {/* Interactive Skills, Plugins & Tags Editor (SkillsManager) */}
+          <div className="bg-[#161b22] border border-zinc-800 rounded-xl p-4 sm:p-5 space-y-5">
+            <div className="flex items-center justify-between border-b border-zinc-800 pb-3">
+              <h4 className="text-xs sm:text-sm font-extrabold text-zinc-100 uppercase tracking-wider flex items-center gap-2">
+                <Shield className="w-4 h-4 text-yellow-400" /> Operational Skills Console
+              </h4>
+              <span className="text-[9px] sm:text-[10px] bg-yellow-500/10 text-yellow-400 px-2 py-0.5 rounded font-bold uppercase font-mono">
+                Interactive Console
+              </span>
+            </div>
+
+            {/* Operational Skills Section */}
+            <div>
+              <div className="text-[10px] sm:text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-2 flex justify-between items-center">
+                <span>Active Skills</span>
+                <span className="text-[9px] text-zinc-500 font-mono">{(currentAgent.skills || []).length} assigned</span>
+              </div>
+              
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {(currentAgent.skills || []).length === 0 ? (
+                  <span className="text-xs text-zinc-500 italic">No specific operational skills assigned.</span>
+                ) : (
+                  (currentAgent.skills || []).map(skill => (
+                    <button
+                      key={skill}
+                      type="button"
+                      onClick={() => toggleSkill(skill)}
+                      className="text-[10px] bg-yellow-500/10 text-yellow-400 border border-yellow-500/20 px-2 py-1 rounded font-semibold font-mono flex items-center gap-1 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 active:scale-95 transition-all cursor-pointer"
+                      title="Click to remove skill"
+                    >
+                      {skill}
+                      <X className="w-3 h-3 text-current shrink-0" />
+                    </button>
+                  ))
+                )}
+              </div>
+
+              <div>
+                <div className="text-[9px] text-zinc-500 font-bold mb-1.5 uppercase tracking-wider">Add Operational Skill:</div>
+                <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto p-1.5 bg-black/40 border border-zinc-800/60 rounded-lg custom-scrollbar">
+                  {AVAILABLE_SKILLS.filter(s => !(currentAgent.skills || []).includes(s)).map(skill => (
+                    <button
+                      key={skill}
+                      type="button"
+                      onClick={() => toggleSkill(skill)}
+                      className="text-[9px] bg-zinc-900 text-zinc-400 border border-zinc-800 hover:border-zinc-700 hover:text-zinc-200 px-2 py-1 rounded font-mono flex items-center gap-1 active:scale-95 transition-all cursor-pointer"
+                    >
+                      <Plus className="w-2.5 h-2.5 text-zinc-500 shrink-0" /> {skill}
+                    </button>
+                  ))}
+                  {AVAILABLE_SKILLS.filter(s => !(currentAgent.skills || []).includes(s)).length === 0 && (
+                    <span className="text-[9px] text-zinc-600 font-semibold italic">All skills assigned.</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Registered Plugins Section */}
+            <div>
+              <div className="text-[10px] sm:text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-2 flex justify-between items-center">
+                <span>Registered Extensions / Plugins</span>
+                <span className="text-[9px] text-zinc-500 font-mono">{(currentAgent.plugins || []).length} active</span>
+              </div>
+              
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {(currentAgent.plugins || []).length === 0 ? (
+                  <span className="text-xs text-zinc-500 italic">No custom plugins registered.</span>
+                ) : (
+                  (currentAgent.plugins || []).map(plugin => (
+                    <button
+                      key={plugin}
+                      type="button"
+                      onClick={() => togglePlugin(plugin)}
+                      className="text-[10px] bg-cyan-500/10 text-cyan-400 border border-cyan-500/20 px-2 py-1 rounded font-semibold font-mono flex items-center gap-1 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 active:scale-95 transition-all cursor-pointer"
+                      title="Click to deregister plugin"
+                    >
+                      {plugin}
+                      <X className="w-3 h-3 text-current shrink-0" />
+                    </button>
+                  ))
+                )}
+              </div>
+
+              <div>
+                <div className="text-[9px] text-zinc-500 font-bold mb-1.5 uppercase tracking-wider">Add Custom Extension:</div>
+                <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto p-1.5 bg-black/40 border border-zinc-800/60 rounded-lg custom-scrollbar">
+                  {AVAILABLE_PLUGINS.filter(p => !(currentAgent.plugins || []).includes(p)).map(plugin => (
+                    <button
+                      key={plugin}
+                      type="button"
+                      onClick={() => togglePlugin(plugin)}
+                      className="text-[9px] bg-zinc-900 text-zinc-400 border border-zinc-800 hover:border-zinc-700 hover:text-zinc-200 px-2 py-1 rounded font-mono flex items-center gap-1 active:scale-95 transition-all cursor-pointer"
+                    >
+                      <Plus className="w-2.5 h-2.5 text-zinc-500 shrink-0" /> {plugin}
+                    </button>
+                  ))}
+                  {AVAILABLE_PLUGINS.filter(p => !(currentAgent.plugins || []).includes(p)).length === 0 && (
+                    <span className="text-[9px] text-zinc-600 font-semibold italic">All extensions active.</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            {/* Operational Tags Section */}
+            <div>
+              <div className="text-[10px] sm:text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-2 flex justify-between items-center">
+                <span>Operations & Token Tags</span>
+                <span className="text-[9px] text-zinc-500 font-mono">{(currentAgent.tags || []).length} tagged</span>
+              </div>
+              
+              <div className="flex flex-wrap gap-1.5 mb-3">
+                {(currentAgent.tags || []).length === 0 ? (
+                  <span className="text-xs text-zinc-500 italic">No operational tags assigned.</span>
+                ) : (
+                  (currentAgent.tags || []).map(tag => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => toggleTag(tag)}
+                      className="text-[10px] bg-purple-500/10 text-purple-400 border border-purple-500/20 px-2.5 py-1 rounded font-bold font-mono flex items-center gap-1 hover:bg-red-500/10 hover:text-red-400 hover:border-red-500/20 active:scale-95 transition-all cursor-pointer"
+                      title="Click to untag"
+                    >
+                      #{tag}
+                      <X className="w-3 h-3 text-current shrink-0" />
+                    </button>
+                  ))
+                )}
+              </div>
+
+              <div>
+                <div className="text-[9px] text-zinc-500 font-bold mb-1.5 uppercase tracking-wider">Apply Tags:</div>
+                <div className="flex flex-wrap gap-1 max-h-24 overflow-y-auto p-1.5 bg-black/40 border border-zinc-800/60 rounded-lg custom-scrollbar">
+                  {AVAILABLE_TAGS.filter(t => !(currentAgent.tags || []).includes(t)).map(tag => (
+                    <button
+                      key={tag}
+                      type="button"
+                      onClick={() => toggleTag(tag)}
+                      className="text-[9px] bg-zinc-900 text-zinc-400 border border-zinc-800 hover:border-zinc-700 hover:text-zinc-200 px-2 py-1 rounded font-bold font-mono flex items-center gap-1 active:scale-95 transition-all cursor-pointer"
+                    >
+                      <Plus className="w-2.5 h-2.5 text-zinc-500 shrink-0" /> #{tag}
+                    </button>
+                  ))}
+                  {AVAILABLE_TAGS.filter(t => !(currentAgent.tags || []).includes(t)).length === 0 && (
+                    <span className="text-[9px] text-zinc-600 font-semibold italic">All tags applied.</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+
           {/* Hooked bead details */}
           <div className="bg-[#161b22] border border-zinc-800 rounded-xl p-4">
             <div className="text-[11px] font-bold text-zinc-400 uppercase tracking-wider mb-2">
               Currently Hooked Bead Hash
             </div>
             <div className="text-xs font-mono text-yellow-400 break-all bg-black/50 p-3 rounded-lg border border-zinc-800 flex items-center justify-between">
-              <span>{isWorking ? (agent.hooked || 'e89f21a4-c4ec9718') : 'none (idle)'}</span>
+              <span>{isWorking ? (currentAgent.hooked || 'e89f21a4-c4ec9718') : 'none (idle)'}</span>
               <span className="text-[10px] bg-yellow-500/10 text-yellow-400 px-2 py-0.5 rounded border border-yellow-500/20 font-bold">HOOKED</span>
             </div>
           </div>
@@ -168,16 +400,16 @@ export function AgentDetailModal({ agent, onClose, onToggleStatus, onRunTestTask
           <div className="bg-[#161b22] border border-zinc-800 rounded-xl p-4">
             <div className="text-xs font-bold text-zinc-200 mb-2 flex items-center justify-between">
               <span className="flex items-center gap-1.5">
-                <Terminal className="w-4 h-4 text-yellow-400" /> Dispatch Task to {agent.name}
+                <Terminal className="w-4 h-4 text-yellow-400" /> Dispatch Task to {currentAgent.name}
               </span>
-              <span className="text-[10px] font-mono text-zinc-400 bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800">{agent.model || 'grok-3-fast'}</span>
+              <span className="text-[10px] font-mono text-zinc-400 bg-zinc-900 px-2 py-0.5 rounded border border-zinc-800">{currentAgent.model || 'grok-3-fast'}</span>
             </div>
             <form onSubmit={handleExecuteTask} className="flex gap-2 mt-3">
               <input
                 type="text"
                 value={agentPrompt}
                 onChange={(e) => setAgentPrompt(e.target.value)}
-                placeholder={`Instruct ${agent.name}...`}
+                placeholder={`Instruct ${currentAgent.name}...`}
                 className="flex-1 bg-zinc-900 border border-zinc-700/80 rounded-lg px-3 py-2 text-xs text-zinc-100 font-mono focus:outline-none focus:border-yellow-500"
               />
               <button
@@ -203,10 +435,10 @@ export function AgentDetailModal({ agent, onClose, onToggleStatus, onRunTestTask
               <span className="text-xs font-bold text-zinc-300 uppercase tracking-wider flex items-center gap-1.5">
                 <Terminal className="w-4 h-4 text-yellow-500" /> Live Action Output Stream
               </span>
-              <span className="text-[10px] text-zinc-400 font-mono">Last Active: {agent.lastActive}</span>
+              <span className="text-[10px] text-zinc-400 font-mono">Last Active: {currentAgent.lastActive}</span>
             </div>
             <div className="bg-[#080c11] border border-zinc-850 rounded-lg p-3.5 font-mono text-xs text-zinc-300 leading-relaxed min-h-[100px] shadow-inner">
-              {agent.currentAction || (isWorking ? 'Processing queue tasks and telemetry synchronization...' : 'Agent standing by in idle standby state.')}
+              {currentAgent.currentAction || (isWorking ? 'Processing queue tasks and telemetry synchronization...' : 'Agent standing by in idle standby state.')}
             </div>
           </div>
         </div>

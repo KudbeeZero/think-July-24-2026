@@ -48,6 +48,9 @@ export interface Agent {
   completionTokensSpent?: number;
   totalTasksCompleted?: number;
   temperature?: number;
+  skills?: string[];
+  plugins?: string[];
+  tags?: string[];
 }
 
 export interface ConvoyTask {

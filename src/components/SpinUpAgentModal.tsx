@@ -30,6 +30,37 @@ export const SpinUpAgentModal: React.FC<SpinUpAgentModalProps> = ({
   const [reasoningTrace, setReasoningTrace] = useState<string | null>(null);
   const [executionStatus, setExecutionStatus] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
 
+  // Interactive skills, plugins & tags arrays
+  const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
+  const [selectedPlugins, setSelectedPlugins] = useState<string[]>([]);
+  const [selectedTags, setSelectedTags] = useState<string[]>([]);
+
+  const AVAILABLE_SKILLS = [
+    'Drizzle Schema Migration',
+    'Redis Resiliency & Fail-Open',
+    'Memory Pipeline & Semantic Recall',
+    'Google Maps Platform Checkout',
+    'OAuth Popup Integrations',
+    'Workspace API Sheet Integrations'
+  ];
+
+  const AVAILABLE_PLUGINS = [
+    'Drizzle DDL Engine',
+    'Upstash Redis Failover Shield',
+    'MemoryVault SQLite Indexer',
+    'Google Maps JS Autocomplete',
+    'OAuth Identity Gateway',
+    'Gmail Workspace Hook'
+  ];
+
+  const AVAILABLE_TAGS = [
+    'Think-Tokens',
+    'Fast-Tokens',
+    'Fail-Open',
+    'Postgres-Sync',
+    'Cosine-Semantic'
+  ];
+
   if (!isOpen) return null;
 
   const handleSpinUpAndTest = async (e: React.FormEvent) => {
@@ -41,7 +72,7 @@ export const SpinUpAgentModal: React.FC<SpinUpAgentModalProps> = ({
     setExecutionOutput(null);
     setReasoningTrace(null);
 
-    // Create the new agent object
+    // Create the new agent object with selected skills, plugins, and tags
     const newAgent: Agent = {
       id: `a_${Date.now()}`,
       name: name.trim(),
@@ -56,7 +87,10 @@ export const SpinUpAgentModal: React.FC<SpinUpAgentModalProps> = ({
       promptTokensSpent: 0,
       completionTokensSpent: 0,
       totalTasksCompleted: 0,
-      temperature: 0.2
+      temperature: 0.2,
+      skills: selectedSkills.length > 0 ? selectedSkills : ['General Purpose Reasoning'],
+      plugins: selectedPlugins.length > 0 ? selectedPlugins : ['Core Cognitive Shield'],
+      tags: selectedTags.length > 0 ? selectedTags : ['Fast-Tokens']
     };
 
     onAgentCreated(newAgent);
@@ -157,6 +191,84 @@ export const SpinUpAgentModal: React.FC<SpinUpAgentModalProps> = ({
                 <option value="grok-3-fast">grok-3-fast (xAI Grok Reasoning Engine)</option>
                 <option value="inception-v2">Inception API Worker</option>
               </select>
+            </div>
+          </div>
+
+          {/* Interactive Skills */}
+          <div>
+            <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1.5">
+              Assign Skills
+            </label>
+            <div className="flex flex-wrap gap-1.5 p-2 bg-zinc-950/40 border border-zinc-800 rounded-lg">
+              {AVAILABLE_SKILLS.map(skill => {
+                const active = selectedSkills.includes(skill);
+                return (
+                  <button
+                    key={skill}
+                    type="button"
+                    onClick={() => setSelectedSkills(prev => prev.includes(skill) ? prev.filter(s => s !== skill) : [...prev, skill])}
+                    className={`px-2 py-1 rounded text-[10px] font-semibold border transition-all cursor-pointer ${
+                      active
+                        ? 'bg-yellow-500/20 text-yellow-400 border-yellow-500/50'
+                        : 'bg-zinc-900/50 text-zinc-400 border-zinc-800 hover:border-zinc-700'
+                    }`}
+                  >
+                    {skill}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Interactive Plugins */}
+          <div>
+            <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1.5">
+              Access Plugins
+            </label>
+            <div className="flex flex-wrap gap-1.5 p-2 bg-zinc-950/40 border border-zinc-800 rounded-lg">
+              {AVAILABLE_PLUGINS.map(plugin => {
+                const active = selectedPlugins.includes(plugin);
+                return (
+                  <button
+                    key={plugin}
+                    type="button"
+                    onClick={() => setSelectedPlugins(prev => prev.includes(plugin) ? prev.filter(p => p !== plugin) : [...prev, plugin])}
+                    className={`px-2 py-1 rounded text-[10px] font-semibold border transition-all cursor-pointer ${
+                      active
+                        ? 'bg-cyan-500/20 text-cyan-400 border-cyan-500/50'
+                        : 'bg-zinc-900/50 text-zinc-400 border-zinc-800 hover:border-zinc-700'
+                    }`}
+                  >
+                    {plugin}
+                  </button>
+                );
+              })}
+            </div>
+          </div>
+
+          {/* Interactive Token Tags */}
+          <div>
+            <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1.5">
+              Token & Operations Tags
+            </label>
+            <div className="flex flex-wrap gap-1.5 p-2 bg-zinc-950/40 border border-zinc-800 rounded-lg">
+              {AVAILABLE_TAGS.map(tag => {
+                const active = selectedTags.includes(tag);
+                return (
+                  <button
+                    key={tag}
+                    type="button"
+                    onClick={() => setSelectedTags(prev => prev.includes(tag) ? prev.filter(t => t !== tag) : [...prev, tag])}
+                    className={`px-2 py-1 rounded text-[10px] font-semibold border transition-all cursor-pointer ${
+                      active
+                        ? 'bg-purple-500/20 text-purple-400 border-purple-500/50'
+                        : 'bg-zinc-900/50 text-zinc-400 border-zinc-800 hover:border-zinc-700'
+                    }`}
+                  >
+                    #{tag}
+                  </button>
+                );
+              })}
             </div>
           </div>
 

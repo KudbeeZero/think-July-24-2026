@@ -40,7 +40,10 @@ export const INITIAL_AGENTS: Agent[] = [
     promptTokensSpent: 128400,
     completionTokensSpent: 32100,
     totalTasksCompleted: 18,
-    temperature: 0.2
+    temperature: 0.2,
+    skills: ['Drizzle Schema Migration', 'PCA Reducer Compiler', 'Relational Database Sync'],
+    plugins: ['Drizzle DDL Engine', 'Cloud SQL Executor'],
+    tags: ['Verified-Trace', 'Postgres-Sync', 'Think-Tokens']
   },
   { 
     id: 'a2', 
@@ -56,7 +59,10 @@ export const INITIAL_AGENTS: Agent[] = [
     promptTokensSpent: 184500,
     completionTokensSpent: 45200,
     totalTasksCompleted: 24,
-    temperature: 0.3
+    temperature: 0.3,
+    skills: ['Fail-Open Rate Limiter', 'Middleware Guard Routing', 'Upstash Redis Fallback'],
+    plugins: ['Redis Exponential Backoff', 'Upstash Resiliency Shield'],
+    tags: ['Resilient-Pipe', 'Fail-Open', 'Rate-Limiter']
   },
   { 
     id: 'a3', 
@@ -70,7 +76,10 @@ export const INITIAL_AGENTS: Agent[] = [
     promptTokensSpent: 89100,
     completionTokensSpent: 21400,
     totalTasksCompleted: 12,
-    temperature: 0.1
+    temperature: 0.1,
+    skills: ['Memory Pipeline Seeding', 'Semantic Cosine Recall', 'Persistent Local Storage'],
+    plugins: ['MemoryVault SQLite Core', 'Vector Retrieval Index'],
+    tags: ['Cognitive-Trace', 'Semantic-Recall', 'Local-Memory']
   },
   { 
     id: 'a4', 
@@ -84,7 +93,10 @@ export const INITIAL_AGENTS: Agent[] = [
     promptTokensSpent: 45000,
     completionTokensSpent: 11200,
     totalTasksCompleted: 8,
-    temperature: 0.2
+    temperature: 0.2,
+    skills: ['Google Maps Geolocation', 'Interactive Store Locators', 'Dynamic Routes API'],
+    plugins: ['Places Autocomplete Widget', 'Google Maps JS SDK'],
+    tags: ['Maps-Widget', 'Directions-Route', 'Geocoding']
   },
   { 
     id: 'a5', 
@@ -98,7 +110,10 @@ export const INITIAL_AGENTS: Agent[] = [
     promptTokensSpent: 61000,
     completionTokensSpent: 15400,
     totalTasksCompleted: 9,
-    temperature: 0.25
+    temperature: 0.25,
+    skills: ['OAuth Popup Handlers', 'Firebase Auth Security Rules', 'State Sync Reconciliation'],
+    plugins: ['OAuth Authentication Gateway', 'Firebase Client Adapter'],
+    tags: ['OAuth-Flow', 'Firestore-Rules', 'Session-Sync']
   }
 ];
 
