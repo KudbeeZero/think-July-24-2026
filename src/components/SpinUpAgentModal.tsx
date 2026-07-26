@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Bot, X, Sparkles, Cpu, Play, CheckCircle2, AlertCircle, Loader2, Zap } from 'lucide-react';
 import { Agent } from '../types';
+import { useDrawerA11y } from '../hooks/useDrawerA11y';
 
 interface SpinUpAgentModalProps {
   isOpen: boolean;
@@ -15,6 +16,11 @@ export const SpinUpAgentModal: React.FC<SpinUpAgentModalProps> = ({
   onAgentCreated,
   onRunTestTask
 }) => {
+  const containerRef = useDrawerA11y<HTMLDivElement>({
+    isOpen,
+    onClose,
+  });
+
   const [name, setName] = useState('');
   const [role, setRole] = useState<'polecat' | 'refinery' | 'mayor'>('polecat');
   const [model, setModel] = useState<'deepseek-reasoner' | 'grok-3-fast' | 'inception-v2'>('deepseek-reasoner');
@@ -72,8 +78,19 @@ export const SpinUpAgentModal: React.FC<SpinUpAgentModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4">
-      <div className="bg-[#12171f] border border-zinc-800 rounded-xl max-w-xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh]">
+    <div
+      className="fixed inset-0 z-50 bg-black/80 backdrop-blur-sm flex items-center justify-center p-4"
+      onClick={(e) => {
+        if (e.target === e.currentTarget) onClose();
+      }}
+      role="dialog"
+      aria-modal="true"
+      aria-label="Spin Up Worker Agent"
+    >
+      <div
+        ref={containerRef}
+        className="bg-[#12171f] border border-zinc-800 rounded-xl max-w-xl w-full shadow-2xl overflow-hidden flex flex-col max-h-[90vh]"
+      >
         {/* Header */}
         <div className="px-6 py-4 border-b border-zinc-800 flex items-center justify-between bg-[#0d1117]">
           <div className="flex items-center gap-2.5">

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   Brain, 
   Search, 
@@ -48,90 +48,26 @@ export const ThinkTokenVault: React.FC = () => {
   const [newTodoText, setNewTodoText] = useState('');
   const [newTodoCat, setNewTodoCat] = useState('Frontend');
 
-  // Hardcoded real historical/intercepted think tokens representing solved monorepo conflicts, agent states, etc.
-  const [thinkTokens, setThinkTokens] = useState<ThinkToken[]>([
-    {
-      id: "TOKEN-001",
-      beadId: "b1",
-      provider: "deepseek-reasoner (120B ChatGPT wrapper)",
-      timestamp: "Today, 12:14 AM",
-      tokensCount: 1450,
-      status: "re-trained",
-      conflictHistory: [
-        "Challenged by Heroku worker tight BRPOP loop crash.",
-        "Disrupted by sudden Upstash 500,000 maximum daily request exhaustion.",
-        "Restructured using exponential backoff connection timeouts (2s to 30s) in redis.ts"
-      ],
-      trainingLevel: 94,
-      resolvedConflicts: 2,
-      logicCheck: "In-memory circular queues now absorb overflow if Upstash returns 'ERR max requests limit exceeded'.",
-      challengeFactor: "high"
-    },
-    {
-      id: "TOKEN-002",
-      beadId: "b5",
-      provider: "Inception-API (10M contextual canvas)",
-      timestamp: "Today, 12:28 AM",
-      tokensCount: 4200,
-      status: "stable",
-      conflictHistory: [
-        "Tested against client telemetry polling spam causing black screen under 429 status.",
-        "Shielded with MiddlewareGuard on Root Route bypass list."
-      ],
-      trainingLevel: 88,
-      resolvedConflicts: 1,
-      logicCheck: "Rate limiting middleware must fail-open to allow root page to fetch basic HTML static assets.",
-      challengeFactor: "medium"
-    },
-    {
-      id: "TOKEN-003",
-      beadId: "b14",
-      provider: "deepseek-reasoner",
-      timestamp: "Yesterday, 11:42 PM",
-      tokensCount: 840,
-      status: "disrupted",
-      conflictHistory: [
-        "File not found error triggered during PCA dimensionality reduction pipeline execution.",
-        "Root cause was relative import resolution mismatch inside the bundle phase."
-      ],
-      trainingLevel: 45,
-      resolvedConflicts: 0,
-      logicCheck: "Drizzle / Esbuild bundle format changed to target CJS, bundling relative pathways into dist/server.cjs.",
-      challengeFactor: "high"
-    },
-    {
-      id: "TOKEN-004",
-      beadId: "b15",
-      provider: "GROQ (Llama-3.3-70B)",
-      timestamp: "Yesterday, 10:15 PM",
-      tokensCount: 310,
-      status: "stable",
-      conflictHistory: [
-        "Atomic Redis EVAL scripts implemented for consensus check during Bead governance votes.",
-        "Verified safe concurrency against multiple parallel worker requests."
-      ],
-      trainingLevel: 99,
-      resolvedConflicts: 1,
-      logicCheck: "Lua script guarantees atomic verify-then-decrement on rate limit buckets.",
-      challengeFactor: "low"
-    },
-    {
-      id: "TOKEN-005",
-      beadId: "b13",
-      provider: "Inception-API (10M)",
-      timestamp: "Yesterday, 08:30 PM",
-      tokensCount: 1250,
-      status: "challenged",
-      conflictHistory: [
-        "Keyboard accessibility test failed on slide-up terminal toggle.",
-        "Needs focus trapping on background elements to avoid dual-cursor navigation conflicts."
-      ],
-      trainingLevel: 72,
-      resolvedConflicts: 0,
-      logicCheck: "React portal added for overlays with clean Tabindex cycle restrictions.",
-      challengeFactor: "medium"
-    }
-  ]);
+  // Dynamic state fetched from parallel worker alpha
+  const [thinkTokens, setThinkTokens] = useState<ThinkToken[]>([]);
+
+  useEffect(() => {
+    const fetchTokens = async () => {
+      try {
+        const response = await fetch('/api/think-tokens');
+        if (response.ok) {
+          const data = await response.json();
+          setThinkTokens(data);
+        }
+      } catch (e) {
+        console.error("Failed to fetch think tokens:", e);
+      }
+    };
+    
+    fetchTokens();
+    const interval = setInterval(fetchTokens, 5000); // Live poll
+    return () => clearInterval(interval);
+  }, []);
 
   const handleAddTodo = () => {
     if (!newTodoText.trim()) return;

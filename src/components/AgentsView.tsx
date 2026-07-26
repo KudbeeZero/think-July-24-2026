@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Bot,
   Shield,
@@ -31,6 +31,25 @@ export function AgentsView({ agents, onSelectAgent, onToggleStatus }: AgentsView
   const [searchQuery, setSearchQuery] = useState('');
   const [roleFilter, setRoleFilter] = useState<string>('all');
   const [isSyncing, setIsSyncing] = useState(false);
+  const [clusterData, setClusterData] = useState<any>(null);
+  const [githubData, setGithubData] = useState<any>(null);
+
+  useEffect(() => {
+    const fetchClusterInfo = async () => {
+      try {
+        const r1 = await fetch('/api/agents/workers/mode');
+        if (r1.ok) setClusterData(await r1.json());
+
+        const r2 = await fetch('/api/github/stream');
+        if (r2.ok) setGithubData(await r2.json());
+      } catch (e) {
+        console.error("Failed to fetch HUD stream");
+      }
+    };
+    fetchClusterInfo();
+    const interval = setInterval(fetchClusterInfo, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
   const filteredAgents = agents.filter((a) => {
     const matchesSearch =
@@ -243,27 +262,27 @@ export function AgentsView({ agents, onSelectAgent, onToggleStatus }: AgentsView
 
             <div className="p-3 bg-zinc-950/80 border border-zinc-850 rounded-xl flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-2.5 h-2.5 rounded-full bg-yellow-400 animate-pulse" />
+                <div className={`w-2.5 h-2.5 rounded-full ${clusterData?.workers?.find((w: any) => w.name === 'Sub-Agent-Alpha')?.status === 'ACTIVE' ? 'bg-yellow-400 animate-pulse' : 'bg-zinc-600'}`} />
                 <div>
                   <div className="text-xs font-bold text-zinc-100">Sub-Agent Worker Alpha</div>
                   <div className="text-[10px] text-zinc-400">Local Coding Node / DeepSeek Reasoner Exec</div>
                 </div>
               </div>
-              <span className="text-[10px] text-yellow-400 font-bold bg-yellow-500/10 px-2 py-1 rounded border border-yellow-500/20">
-                PARALLEL RUNNING
+              <span className={`text-[10px] font-bold px-2 py-1 rounded border ${clusterData?.workers?.find((w: any) => w.name === 'Sub-Agent-Alpha')?.status === 'ACTIVE' ? 'text-yellow-400 bg-yellow-500/10 border-yellow-500/20' : 'text-zinc-500 bg-zinc-900 border-zinc-800'}`}>
+                {clusterData?.workers?.find((w: any) => w.name === 'Sub-Agent-Alpha')?.status || 'OFFLINE'}
               </span>
             </div>
 
             <div className="p-3 bg-zinc-950/80 border border-zinc-850 rounded-xl flex items-center justify-between">
               <div className="flex items-center gap-3">
-                <div className="w-2.5 h-2.5 rounded-full bg-purple-400 animate-pulse" />
+                <div className={`w-2.5 h-2.5 rounded-full ${clusterData?.workers?.find((w: any) => w.name === 'GitHub-Sync-Daemon')?.status === 'STREAMING' ? 'bg-purple-400 animate-pulse' : 'bg-zinc-600'}`} />
                 <div>
                   <div className="text-xs font-bold text-zinc-100">GitHub Sync Daemon</div>
                   <div className="text-[10px] text-zinc-400">CI Pipeline Stream & Draft PR Webhook Listener</div>
                 </div>
               </div>
-              <span className="text-[10px] text-purple-400 font-bold bg-purple-500/10 px-2 py-1 rounded border border-purple-500/20">
-                STREAMING
+              <span className={`text-[10px] font-bold px-2 py-1 rounded border ${clusterData?.workers?.find((w: any) => w.name === 'GitHub-Sync-Daemon')?.status === 'STREAMING' ? 'text-purple-400 bg-purple-500/10 border-purple-500/20' : 'text-zinc-500 bg-zinc-900 border-zinc-800'}`}>
+                {clusterData?.workers?.find((w: any) => w.name === 'GitHub-Sync-Daemon')?.status || 'OFFLINE'}
               </span>
             </div>
           </div>
@@ -279,40 +298,30 @@ export function AgentsView({ agents, onSelectAgent, onToggleStatus }: AgentsView
               </h2>
             </div>
             <span className="text-[10px] text-zinc-400 font-bold">
-              kilo-cloud/kudbee-monorepo
+              {githubData?.repository || 'kilo-cloud/kudbee-monorepo'}
             </span>
           </div>
 
           <div className="space-y-2.5 text-xs">
-            <div className="bg-zinc-950/80 p-2.5 rounded-xl border border-zinc-850 flex items-center justify-between">
-              <div>
-                <span className="text-yellow-400 font-bold mr-2">PR #181:</span>
-                <span className="text-zinc-200">memory seeding & MCP vault</span>
+            {(githubData?.activePRs || []).map((pr: any) => (
+              <div key={pr.id} className="bg-zinc-950/80 p-2.5 rounded-xl border border-zinc-850 flex items-center justify-between">
+                <div>
+                  <span className="text-yellow-400 font-bold mr-2">PR #{pr.id}:</span>
+                  <span className="text-zinc-200">{pr.title}</span>
+                </div>
+                <span className={`text-[10px] font-bold px-2 py-0.5 rounded border ${
+                  pr.status === 'MERGED' ? 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20' :
+                  pr.status === 'IN_REVIEW' ? 'text-amber-400 bg-amber-500/10 border-amber-500/20' :
+                  'text-cyan-400 bg-cyan-500/10 border-cyan-500/20 flex items-center gap-1'
+                }`}>
+                  {pr.status === 'OPEN' && <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" />} {pr.checks || pr.status}
+                </span>
               </div>
-              <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/10 px-2 py-0.5 rounded border border-emerald-500/20">
-                MERGED (12/12 PASSED)
-              </span>
-            </div>
-
-            <div className="bg-zinc-950/80 p-2.5 rounded-xl border border-zinc-850 flex items-center justify-between">
-              <div>
-                <span className="text-yellow-400 font-bold mr-2">PR #182:</span>
-                <span className="text-zinc-200">fail-open rate limiter patch</span>
-              </div>
-              <span className="text-[10px] text-amber-400 font-bold bg-amber-500/10 px-2 py-0.5 rounded border border-amber-500/20">
-                IN REVIEW (11/11 PASSED)
-              </span>
-            </div>
-
-            <div className="bg-zinc-950/80 p-2.5 rounded-xl border border-zinc-850 flex items-center justify-between">
-              <div>
-                <span className="text-yellow-400 font-bold mr-2">PR #183:</span>
-                <span className="text-zinc-200">parallel sub-agent server runner</span>
-              </div>
-              <span className="text-[10px] text-cyan-400 font-bold bg-cyan-500/10 px-2 py-0.5 rounded border border-cyan-500/20 flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-ping" /> RUNNING CI
-              </span>
-            </div>
+            ))}
+            
+            {!githubData?.activePRs?.length && (
+               <div className="text-center text-zinc-500 text-xs py-4">No active PRs in stream.</div>
+            )}
           </div>
         </div>
       </div>

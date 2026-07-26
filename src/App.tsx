@@ -39,6 +39,7 @@ import { Bead, Agent, Convoy, Status, Priority, MailItem } from './types';
 import { NewBeadModal } from './components/NewBeadModal';
 import { BeadDetailModal } from './components/BeadDetailModal';
 import { AgentDetailModal } from './components/AgentDetailModal';
+import { ConvoyDetailModal } from './components/ConvoyDetailModal';
 import { ObservabilityView } from './components/ObservabilityView';
 import { MergeQueueView } from './components/MergeQueueView';
 import { MailView } from './components/MailView';
@@ -73,6 +74,8 @@ export default function App() {
     isNewRigOpen,
     selectedBead,
     selectedAgent,
+    selectedConvoy,
+    setSelectedConvoy,
     isSidebarOpen,
     showTerminalMobile,
     isGrokTerminalOpen,
@@ -446,18 +449,20 @@ export default function App() {
             </div>
 
             <div className="absolute top-[14%] left-[50%] -translate-x-1/2 w-9 h-9 rounded-full bg-zinc-900 border-2 border-yellow-400 flex flex-col items-center justify-center z-10 shadow-[0_0_15px_rgba(250,204,21,0.4)] relative group cursor-pointer hover:scale-110 transition-transform">
-              <span className="text-[7px] text-yellow-300 font-extrabold">refinery</span>
+              <span className="text-[7px] text-yellow-300 font-extrabold">Alpha</span>
+              <span className="text-[5px] text-yellow-400/80 font-bold">LOCAL</span>
               <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-yellow-400 border-2 border-[#080c11] animate-pulse" />
             </div>
 
             <div className="absolute top-[20%] right-[26%] w-8 h-8 rounded-full bg-zinc-900 border-2 border-cyan-500/80 flex flex-col items-center justify-center z-10 relative shadow-[0_0_10px_rgba(6,182,212,0.3)] group cursor-pointer hover:scale-110 transition-transform">
-              <span className="text-[7px] text-cyan-300 font-bold">Shadow</span>
+              <span className="text-[7px] text-cyan-300 font-bold">refinery</span>
               <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-cyan-400 border-2 border-[#080c11]" />
             </div>
 
-            <div className="absolute top-[32%] right-[8%] w-8 h-8 rounded-full bg-zinc-900 border-2 border-purple-500/80 flex flex-col items-center justify-center z-10 relative shadow-[0_0_10px_rgba(168,85,247,0.3)] group cursor-pointer hover:scale-110 transition-transform">
-              <span className="text-[7px] text-purple-300 font-bold">Clover</span>
-              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-purple-400 border-2 border-[#080c11]" />
+            <div className="absolute top-[32%] right-[8%] w-9 h-9 rounded-full bg-zinc-900 border-2 border-purple-500/80 flex flex-col items-center justify-center z-10 relative shadow-[0_0_10px_rgba(168,85,247,0.3)] group cursor-pointer hover:scale-110 transition-transform">
+              <span className="text-[7px] text-purple-300 font-bold">GitHub</span>
+              <span className="text-[5px] text-purple-400/80 font-bold">SYNC</span>
+              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-purple-400 border-2 border-[#080c11] animate-ping" />
             </div>
           </div>
         </div>
@@ -731,6 +736,19 @@ export default function App() {
         agent={selectedAgent}
         onClose={() => setSelectedAgent(null)}
         onToggleStatus={handleToggleAgentStatus}
+      />
+
+      <ConvoyDetailModal
+        convoy={selectedConvoy}
+        onClose={() => setSelectedConvoy(null)}
+        onSelectBead={(beadId) => {
+          const found = beads.find((b) => b.id === beadId);
+          if (found) {
+            setSelectedConvoy(null);
+            setSelectedBead(found);
+          }
+        }}
+        beads={beads}
       />
 
       <SpinUpAgentModal

@@ -13,6 +13,24 @@ export interface Bead {
   tags?: string[];
   reasoningTokens?: number;
   description?: string;
+  rootCause?: string;
+  specificFixes?: Array<{
+    step: number;
+    title: string;
+    details: string;
+    code?: string;
+  }>;
+  verificationSteps?: string[];
+  relatedBeads?: Array<{
+    id: string;
+    title: string;
+    status: string;
+    type: string;
+  }>;
+  eventTimeline?: Array<{
+    event: string;
+    time: string;
+  }>;
 }
 
 export interface Agent {

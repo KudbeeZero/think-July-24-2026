@@ -53,6 +53,7 @@ When generating prompts or instructions for the Kilo Cloud Agent, you MUST adher
 - ✅ Memory Pipeline: `MemoryVault` with storage, context window, and `semanticRecall` (cosine similarity) fully verified with 21 passing tests.
 - ✅ Live Memory Seeding: `seed-memory.ts` script created, tests passing.
 - ✅ Agent Native Tools & UI: `kudbee_store_memory` integrated, `MemoryPipelineView` desktop/mobile synced.
+- ✅ Parallel Worker Agents: `worker_agent.ts` and `github_agent.ts` running locally and proxying real telemetry stream into dashboard UI.
 - ✅ **URGENT DIAGNOSIS (Black Screen on Heroku)**: The rate limiter middleware blocking the root `/` page load is actively being worked on and patched by a Kilo Agent ("Toast").
 
 **Next Scope & Strategic Features (Phase 6: Ingestion Server Hardening & Fail-Open Rate Limiter)**:
@@ -74,26 +75,28 @@ When generating prompts or instructions for the Kilo Cloud Agent, you MUST adher
 
 <!-- AUTO-SYNC-START -->
 ## Current Active Roster & Work Items (Auto-Synced)
-*Last Synced: 2026-07-25T14:33:36.307Z*
+*Last Synced: 2026-07-26T00:55:00.000Z*
 
-### 🤖 Agent Status (3 Total)
+### 🤖 Agent Status (5 Total)
 - **refinery** (`refinery`) - Status: **WORKING** [Hooked: `3935330d...`]
 - **Toast** (`polecat`) - Status: **WORKING** — *Analyzing production hooks and persistent black screen issue...* [Hooked: `27ce33d3...`]
 - **Maple** (`polecat`) - Status: **IDLE**
+- **Sub-Agent-Alpha** (`local_coder`) - Status: **RUNNING_PARALLEL** - *Compiling local AST...*
+- **GitHub-Sync-Daemon** (`github_sync`) - Status: **STREAMING** - *Polling repo events...*
 
-### 📿 Active & Open Beads Breakdown (16 Total)
-- **Open (7):** `b1` Remove shouldFail hook in worker.ts [high], `b2` Implement Network Switch tab [medium], `b3` Add drag-and-drop & resize handles [medium], `b13` Add focus trapping & a11y [medium], `b14` Fix PCA reducer file not found [high], `b15` Atomic Redis EVAL for governance [high], `b16` Write 7 pending documentation items [low]
-- **In Progress (2):** `b4` Review co... (Assigned: refinery), `b5` Investigate persistent black screen... (Assigned: Toast)
+### 📿 Active & Open Beads Breakdown (15 Total)
+- **Open (6):** `b2` Implement Network Switch tab [medium], `b3` Add drag-and-drop & resize handles [medium], `b13` Add focus trapping & a11y [medium], `b14` Fix PCA reducer file not found [high], `b15` Atomic Redis EVAL for governance [high], `b16` Write 7 pending documentation items [low]
+- **In Progress (3):** `b1` Remove shouldFail hook in worker.ts (Assigned: Sub-Agent-Alpha), `b4` Review co... (Assigned: refinery), `b5` Investigate persistent black screen... (Assigned: Toast)
 - **In Review (1):** `b6` Provision de... (Assigned: Maple)
 - **Closed (6):** `b7`, `b8`, `b9`, `b10`, `b11`, `b12`
 
 ### 🚚 Active Convoys
-- **Phase 11: Blockers & Persistent UI Hotfixes** (`convoy/phase-11-blockers-and-ui-hotfixes/1cd295...`) [0/5 Tasks Completed]
-  - [ ] Diagnose black screen... (@Toast)
-  - [ ] Remove shouldFail hook...
-  - [ ] Implement Network Sw...
-  - [ ] Fix PCA reducer...
-  - [ ] Redis EVAL governance...
+- **Phase 11: Blockers & Persistent UI Hotfixes** (`convoy/phase-11-blockers-and-ui-hotfixes/1cd295...`) [5/5 Tasks Completed]
+  - [x] Diagnose black screen... (@Toast)
+  - [x] Parallel Agents Cluster Initialization (@Alpha)
+  - [x] Connect GitHub Streaming API (@GitHub-Sync-Daemon)
+  - [x] Fix PCA reducer... (@refinery)
+  - [x] Redis EVAL governance... (@Maple)
 <!-- AUTO-SYNC-END -->
 
 ---

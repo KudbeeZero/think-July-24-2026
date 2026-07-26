@@ -40,6 +40,8 @@ interface KiloContextType {
   setSelectedBead: (val: Bead | null) => void;
   selectedAgent: Agent | null;
   setSelectedAgent: (val: Agent | null) => void;
+  selectedConvoy: Convoy | null;
+  setSelectedConvoy: (val: Convoy | null) => void;
   isSpinUpModalOpen: boolean;
   setIsSpinUpModalOpen: (val: boolean) => void;
   promptCopied: boolean;
@@ -92,6 +94,7 @@ export const KiloProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [isNewRigOpen, setIsNewRigOpen] = useState(false);
   const [selectedBead, setSelectedBead] = useState<Bead | null>(null);
   const [selectedAgent, setSelectedAgent] = useState<Agent | null>(null);
+  const [selectedConvoy, setSelectedConvoy] = useState<Convoy | null>(null);
 
   // Mobile layout state
   const [isSidebarOpen, setIsSidebarOpen] = useLocalStorage<boolean>('isSidebarOpen', false);
@@ -421,6 +424,7 @@ Assign this bead immediately to prevent the Phase 11 convoy from timing out.`,
       isNewRigOpen, setIsNewRigOpen,
       selectedBead, setSelectedBead,
       selectedAgent, setSelectedAgent,
+      selectedConvoy, setSelectedConvoy,
       isSpinUpModalOpen, setIsSpinUpModalOpen,
       promptCopied, setPromptCopied,
       liveFeed, setLiveFeed,

@@ -1,10 +1,22 @@
 import { Request, Response, NextFunction } from 'express';
 import { checkAndIncrementBudget } from '../server/budgetGate.ts';
+import fs from 'fs';
+import path from 'path';
 
 export interface ProviderCost {
   promptCostPerM: number;      // Cost per 1,000,000 prompt tokens
   completionCostPerM: number;  // Cost per 1,000,000 completion tokens
   reasoningCostPerM?: number;  // Cost per 1,000,000 reasoning tokens (if applicable)
+}
+
+export interface TokenTransaction {
+  id: string;
+  timestamp: string;
+  model: string;
+  promptTokens: number;
+  completionTokens: number;
+  reasoningTokens: number;
+  costUsd: number;
 }
 
 export const PROVIDER_COSTS: Record<string, ProviderCost> = {
@@ -17,6 +29,43 @@ export const PROVIDER_COSTS: Record<string, ProviderCost> = {
   'gemini-2.5-flash': { promptCostPerM: 0.075, completionCostPerM: 0.30 },
   'default': { promptCostPerM: 0.50, completionCostPerM: 1.50 }
 };
+
+const CACHE_FILE_PATH = path.join(process.cwd(), 'data', 'kilo_token_cache.json');
+let tokenTransactionsInMemory: TokenTransaction[] = [];
+
+// Initialize local token storage
+function loadLocalTokenCache(): TokenTransaction[] {
+  try {
+    if (fs.existsSync(CACHE_FILE_PATH)) {
+      const content = fs.readFileSync(CACHE_FILE_PATH, 'utf-8');
+      return JSON.parse(content);
+    }
+  } catch (err) {
+    console.error('[kiloBridge] Error reading token cache file:', err);
+  }
+  return [];
+}
+
+function saveLocalTokenCache(tx: TokenTransaction) {
+  try {
+    tokenTransactionsInMemory.unshift(tx);
+    // Keep max 500 recent transactions
+    if (tokenTransactionsInMemory.length > 500) {
+      tokenTransactionsInMemory = tokenTransactionsInMemory.slice(0, 500);
+    }
+
+    const dataDir = path.dirname(CACHE_FILE_PATH);
+    if (!fs.existsSync(dataDir)) {
+      fs.mkdirSync(dataDir, { recursive: true });
+    }
+    fs.writeFileSync(CACHE_FILE_PATH, JSON.stringify(tokenTransactionsInMemory, null, 2));
+  } catch (err) {
+    console.error('[kiloBridge] Error persisting token cache:', err);
+  }
+}
+
+// Load initial transactions
+tokenTransactionsInMemory = loadLocalTokenCache();
 
 /**
  * Calculates the total cost of a request based on provider and tokens.
@@ -39,6 +88,10 @@ export function calculateTokenCost(
   return promptCost + completionCost + reasoningCost;
 }
 
+export function getCachedTokenTransactions(): TokenTransaction[] {
+  return tokenTransactionsInMemory;
+}
+
 /**
  * Express middleware to handle token cost tracking and budget-gate compliance for LLM API requests.
  */
@@ -54,7 +107,6 @@ export async function kiloBridgeMiddleware(req: Request, res: Response, next: Ne
   // Estimate baseline cost to prevent massive overrun
   const estimatedPromptTokens = Math.max(1, Math.ceil(message.length / 4));
   const estimatedCompletionTokens = 500; // conservative fallback estimate
-  const estimatedCost = calculateTokenCost(model, estimatedPromptTokens, estimatedCompletionTokens);
 
   // Check the current budget limit from budgetGate
   const maxBudgetUSD = parseFloat(process.env.MONTHLY_BUDGET_USD || '50.00');
@@ -87,6 +139,18 @@ export async function kiloBridgeMiddleware(req: Request, res: Response, next: Ne
 
       const finalCost = calculateTokenCost(model, promptTokens, completionTokens, reasoningTokens);
 
+      // Save to local persistent cache
+      const tx: TokenTransaction = {
+        id: `tx_${Date.now()}_${Math.random().toString(36).substring(2, 7)}`,
+        timestamp: new Date().toISOString(),
+        model,
+        promptTokens,
+        completionTokens,
+        reasoningTokens,
+        costUsd: finalCost
+      };
+      saveLocalTokenCache(tx);
+
       // Charge the budget
       checkAndIncrementBudget(finalCost, maxBudgetUSD)
         .then((budgetResult) => {
@@ -100,7 +164,8 @@ export async function kiloBridgeMiddleware(req: Request, res: Response, next: Ne
             reasoning_tokens: reasoningTokens,
             estimated: !body.usage,
             cost_usd: finalCost,
-            current_monthly_spend_usd: budgetResult.currentSpendUSD
+            current_monthly_spend_usd: budgetResult.currentSpendUSD,
+            cached_tx_id: tx.id
           };
         })
         .catch((err) => {
