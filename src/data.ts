@@ -34,6 +34,7 @@ export const INITIAL_AGENTS: Agent[] = [
     status: 'idle', 
     hooked: '3935330d...', 
     lastActive: 'standing by', 
+    lastSleepTime: '10 mins ago',
     icon: 'shield',
     model: 'deepseek-reasoner',
     reasoningTokensSpent: 48920,
@@ -43,7 +44,10 @@ export const INITIAL_AGENTS: Agent[] = [
     temperature: 0.2,
     skills: ['Drizzle Schema Migration', 'PCA Reducer Compiler', 'Relational Database Sync'],
     plugins: ['Drizzle DDL Engine', 'Cloud SQL Executor'],
-    tags: ['Verified-Trace', 'Postgres-Sync', 'Think-Tokens']
+    tags: ['Verified-Trace', 'Postgres-Sync', 'Think-Tokens'],
+    redisDbIndex: 1,
+    inStandbyRoom: true,
+    agentsMdSynced: true
   },
   { 
     id: 'a2', 
@@ -52,6 +56,7 @@ export const INITIAL_AGENTS: Agent[] = [
     status: 'idle', 
     hooked: '27ce33d3...', 
     lastActive: 'standing by', 
+    lastSleepTime: '2 mins ago',
     currentAction: 'Agent standing by in idle state.', 
     icon: 'robot',
     model: 'grok-3-fast',
@@ -62,7 +67,10 @@ export const INITIAL_AGENTS: Agent[] = [
     temperature: 0.3,
     skills: ['Fail-Open Rate Limiter', 'Middleware Guard Routing', 'Upstash Redis Fallback'],
     plugins: ['Redis Exponential Backoff', 'Upstash Resiliency Shield'],
-    tags: ['Resilient-Pipe', 'Fail-Open', 'Rate-Limiter']
+    tags: ['Resilient-Pipe', 'Fail-Open', 'Rate-Limiter'],
+    redisDbIndex: 2,
+    inStandbyRoom: true,
+    agentsMdSynced: true
   }
 ];
 

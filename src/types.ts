@@ -37,9 +37,10 @@ export interface Agent {
   id: string;
   name: string;
   role: string;
-  status: 'idle' | 'working';
+  status: 'idle' | 'working' | 'standby';
   hooked?: string;
   lastActive: string;
+  lastSleepTime?: string;
   currentAction?: string;
   icon?: 'robot' | 'shield';
   model?: string;
@@ -51,6 +52,10 @@ export interface Agent {
   skills?: string[];
   plugins?: string[];
   tags?: string[];
+  redisDbIndex?: number;
+  inStandbyRoom?: boolean;
+  agentsMdSynced?: boolean;
+  assignedBeadId?: string;
 }
 
 export interface ConvoyTask {

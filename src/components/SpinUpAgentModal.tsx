@@ -30,6 +30,11 @@ export const SpinUpAgentModal: React.FC<SpinUpAgentModalProps> = ({
   const [reasoningTrace, setReasoningTrace] = useState<string | null>(null);
   const [executionStatus, setExecutionStatus] = useState<'idle' | 'running' | 'success' | 'error'>('idle');
 
+  // Agent Database, Standby Room & Directives configuration
+  const [selectedDbIndex, setSelectedDbIndex] = useState<number>(3);
+  const [startMode, setStartMode] = useState<'working' | 'standby'>('standby');
+  const [syncAgentsMd, setSyncAgentsMd] = useState<boolean>(true);
+
   // Interactive skills, plugins & tags arrays
   const [selectedSkills, setSelectedSkills] = useState<string[]>([]);
   const [selectedPlugins, setSelectedPlugins] = useState<string[]>([]);
@@ -77,10 +82,16 @@ export const SpinUpAgentModal: React.FC<SpinUpAgentModalProps> = ({
       id: `a_${Date.now()}`,
       name: name.trim(),
       role,
-      status: 'working',
+      status: startMode === 'standby' ? 'standby' : 'working',
+      inStandbyRoom: startMode === 'standby',
+      redisDbIndex: selectedDbIndex,
+      agentsMdSynced: syncAgentsMd,
       hooked: Math.random().toString(16).substring(2, 10) + '...',
-      lastActive: 'Just now',
-      currentAction: `Executing test run on ${model}...`,
+      lastActive: startMode === 'standby' ? 'Standing by in sync room' : 'Just now',
+      lastSleepTime: startMode === 'standby' ? 'Just now' : undefined,
+      currentAction: startMode === 'standby' 
+        ? `Standing by in Sync Chamber (Isolated Redis DB ${selectedDbIndex}). Ingesting peer telemetries & AGENTS.md.`
+        : `Executing task on ${model}...`,
       icon: role === 'refinery' ? 'shield' : 'robot',
       model,
       reasoningTokensSpent: 0,
@@ -165,33 +176,50 @@ export const SpinUpAgentModal: React.FC<SpinUpAgentModalProps> = ({
           <div className="grid grid-cols-2 gap-4">
             <div>
               <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1.5">
-                Agent Role
+                Isolated Redis DB Key Namespace
               </label>
               <select
-                value={role}
-                onChange={(e: any) => setRole(e.target.value)}
-                className="w-full bg-[#181f2a] border border-zinc-700/80 rounded-lg px-3.5 py-2 text-sm text-zinc-200 focus:outline-none focus:border-yellow-500"
+                value={selectedDbIndex}
+                onChange={(e) => setSelectedDbIndex(Number(e.target.value))}
+                className="w-full bg-[#181f2a] border border-zinc-700/80 rounded-lg px-3.5 py-2 text-xs font-mono text-zinc-200 focus:outline-none focus:border-yellow-500"
               >
-                <option value="polecat">Polecat Worker (Tasks & Refactoring)</option>
-                <option value="refinery">Refinery Gatekeeper (Code Review & Merge)</option>
-                <option value="mayor">Mayor Orchestrator (Sub-task Dispatch)</option>
+                <option value={1}>Redis DB 1 (kudbee:agent:db:1)</option>
+                <option value={2}>Redis DB 2 (kudbee:agent:db:2)</option>
+                <option value={3}>Redis DB 3 (kudbee:agent:db:3)</option>
+                <option value={4}>Redis DB 4 (kudbee:agent:db:4)</option>
+                <option value={5}>Redis DB 5 (kudbee:agent:db:5)</option>
               </select>
             </div>
 
             <div>
               <label className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-1.5">
-                AI Model & Reasoning Engine
+                Boot State
               </label>
               <select
-                value={model}
-                onChange={(e: any) => setModel(e.target.value)}
-                className="w-full bg-[#181f2a] border border-zinc-700/80 rounded-lg px-3.5 py-2 text-sm text-zinc-200 focus:outline-none focus:border-yellow-500 font-mono"
+                value={startMode}
+                onChange={(e: any) => setStartMode(e.target.value)}
+                className="w-full bg-[#181f2a] border border-zinc-700/80 rounded-lg px-3.5 py-2 text-xs text-zinc-200 focus:outline-none focus:border-yellow-500 font-mono"
               >
-                <option value="deepseek-reasoner">deepseek-reasoner (R1 Thinking Tokens)</option>
-                <option value="grok-3-fast">grok-3-fast (xAI Grok Reasoning Engine)</option>
-                <option value="inception-v2">Inception API Worker</option>
+                <option value="standby">Standby Chamber (Ingest Context & Peer Telemetries)</option>
+                <option value="working">Wake Up Immediately & Run Initial Task</option>
               </select>
             </div>
+          </div>
+
+          <div className="p-3 bg-yellow-500/10 border border-yellow-500/20 rounded-lg flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <input
+                type="checkbox"
+                id="agents-md-sync"
+                checked={syncAgentsMd}
+                onChange={(e) => setSyncAgentsMd(e.target.checked)}
+                className="w-4 h-4 rounded border-zinc-700 text-yellow-500 focus:ring-yellow-500 bg-zinc-900 cursor-pointer"
+              />
+              <label htmlFor="agents-md-sync" className="text-xs text-zinc-200 font-mono cursor-pointer font-bold">
+                Auto-read AGENTS.md Directives on Boot
+              </label>
+            </div>
+            <span className="text-[10px] text-yellow-400/80 font-mono">INIT Step Pre-load</span>
           </div>
 
           {/* Interactive Skills */}

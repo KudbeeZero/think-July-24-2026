@@ -26,7 +26,10 @@ import {
   Lock,
   Unlock,
   CpuIcon,
-  Sparkles
+  Sparkles,
+  Moon,
+  Radio,
+  FileText
 } from 'lucide-react';
 import { Agent } from '../types';
 import { useKilo } from '../context/KiloContext';
@@ -208,8 +211,6 @@ export function AgentsView({ agents, onSelectAgent, onToggleStatus }: AgentsView
   const updateAgentField = (agentId: string, field: string, val: any) => {
     setAgents((prev: Agent[]) => prev.map(a => a.id === agentId ? { ...a, [field]: val } : a));
   };
-
-  // Change operational state instantly (from DB Table view)
   const handleDatabaseStateChange = (agentId: string) => {
     setAgents((prev: Agent[]) => prev.map(a => {
       if (a.id === agentId) {
@@ -217,8 +218,56 @@ export function AgentsView({ agents, onSelectAgent, onToggleStatus }: AgentsView
         return {
           ...a,
           status: nextStatus,
+          inStandbyRoom: nextStatus === 'idle',
           lastActive: 'just now',
           currentAction: nextStatus === 'working' ? 'Processing database queue state...' : 'Standing by in idle storage pool.'
+        };
+      }
+      return a;
+    }));
+  };
+
+  // Wake Up Agent & Assign Active Task
+  const handleWakeUpAgent = (agentId: string) => {
+    setAgents((prev: Agent[]) => prev.map(a => {
+      if (a.id === agentId) {
+        return {
+          ...a,
+          status: 'working',
+          inStandbyRoom: false,
+          lastActive: 'Just now',
+          currentAction: `Woken up by operator. Processing active task queue on Redis DB ${a.redisDbIndex || 1}...`
+        };
+      }
+      return a;
+    }));
+  };
+
+  // Place Agent in Standby Room / Sleep Mode
+  const handleSleepAgent = (agentId: string) => {
+    setAgents((prev: Agent[]) => prev.map(a => {
+      if (a.id === agentId) {
+        return {
+          ...a,
+          status: 'idle',
+          inStandbyRoom: true,
+          lastActive: 'Standing by in sync chamber',
+          lastSleepTime: 'Just now',
+          currentAction: `Sleeping in Standby Chamber (Redis DB ${a.redisDbIndex || 1}). Ingesting AGENTS.md & peer telemetries.`
+        };
+      }
+      return a;
+    }));
+  };
+
+  // Trigger AGENTS.md Directives Sync for Agent
+  const handleSyncAgentsMd = (agentId: string) => {
+    setAgents((prev: Agent[]) => prev.map(a => {
+      if (a.id === agentId) {
+        return {
+          ...a,
+          agentsMdSynced: true,
+          currentAction: `AGENTS.md Directives refreshed & verified. Standby knowledge cache synced.`
         };
       }
       return a;
@@ -402,6 +451,96 @@ export function AgentsView({ agents, onSelectAgent, onToggleStatus }: AgentsView
               </div>
             )}
           </div>
+        </div>
+      </div>
+
+      {/* 3. AGENT STANDBY ROOM & KNOWLEDGE SYNC CHAMBER */}
+      <div className="bg-[#0f131c] border-2 border-yellow-500/20 rounded-2xl p-4 sm:p-5 shadow-2xl relative overflow-hidden backdrop-blur-md">
+        <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-4 border-b border-zinc-800 pb-3 mb-4">
+          <div className="flex items-center gap-2.5">
+            <div className="w-9 h-9 rounded-xl bg-yellow-500/10 border border-yellow-500/30 flex items-center justify-center text-yellow-400">
+              <Moon className="w-5 h-5 animate-pulse" />
+            </div>
+            <div>
+              <h2 className="text-xs sm:text-sm font-extrabold text-zinc-100 uppercase tracking-wider flex items-center gap-2">
+                AGENT STANDBY ROOM & CONTINUOUS SYNC CHAMBER
+                <span className="px-2 py-0.5 rounded bg-yellow-500/10 text-yellow-400 text-[9px] border border-yellow-500/30">
+                  {agents.filter(a => a.status === 'idle' || a.inStandbyRoom).length} STANDBY WORKERS INGESTING TELEMETRY
+                </span>
+              </h2>
+              <p className="text-[11px] text-zinc-400 font-mono">
+                Sleeping agents continuously ingest peer telemetry stream & <span className="text-yellow-400 font-bold">AGENTS.md</span> directives while waiting for task dispatch.
+              </p>
+            </div>
+          </div>
+
+          <button
+            onClick={() => {
+              agents.filter(a => a.status === 'idle' || a.inStandbyRoom).forEach(a => handleSyncAgentsMd(a.id));
+            }}
+            className="px-3 py-1.5 rounded-lg bg-zinc-900 border border-yellow-500/30 text-yellow-400 hover:bg-yellow-500/10 text-xs font-mono font-bold flex items-center gap-1.5 transition-all cursor-pointer shadow-md"
+          >
+            <FileText className="w-3.5 h-3.5" />
+            <span>Broadcast AGENTS.md Refresh to Standby Pool</span>
+          </button>
+        </div>
+
+        {/* Standby Pool Grid */}
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-3">
+          {agents.filter(a => a.status === 'idle' || a.inStandbyRoom).length === 0 ? (
+            <div className="col-span-full py-6 text-center text-xs text-zinc-500 font-mono bg-zinc-950/40 rounded-xl border border-zinc-850">
+              All agent nodes are currently active on worker tasks. Click "Sleep / Standby" on an agent card below to move them into the Standby Chamber.
+            </div>
+          ) : (
+            agents.filter(a => a.status === 'idle' || a.inStandbyRoom).map((agent) => (
+              <div
+                key={agent.id}
+                className="bg-black/60 border border-zinc-800/80 hover:border-yellow-500/40 rounded-xl p-3 flex flex-col justify-between space-y-2.5 transition-all"
+              >
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="w-2 h-2 rounded-full bg-yellow-400 shadow-[0_0_8px_rgba(234,179,8,0.8)] animate-ping" />
+                    <span className="text-xs font-extrabold text-zinc-100 font-mono">{agent.name}</span>
+                    <span className="text-[9px] font-mono text-zinc-500 uppercase bg-zinc-900 px-1.5 py-0.5 rounded border border-zinc-800">
+                      DB {agent.redisDbIndex || 1}
+                    </span>
+                  </div>
+                  <span className="text-[9px] font-mono text-zinc-400 bg-yellow-500/10 text-yellow-300 px-2 py-0.5 rounded border border-yellow-500/20">
+                    STANDBY
+                  </span>
+                </div>
+
+                <div className="text-[10px] text-zinc-400 font-mono bg-zinc-950 p-2 rounded border border-zinc-850 leading-relaxed truncate">
+                  <span className="text-yellow-500/90 font-bold">In-Chamber Activity:</span> {agent.currentAction || 'Ingesting peer telemetries & AGENTS.md directives.'}
+                </div>
+
+                <div className="flex items-center justify-between text-[9px] font-mono text-zinc-500">
+                  <div className="flex items-center gap-1">
+                    <Radio className="w-3 h-3 text-emerald-400 animate-pulse" />
+                    <span>AGENTS.md: {agent.agentsMdSynced ? 'SYNCED (INIT)' : 'PENDING'}</span>
+                  </div>
+                  <span>Last Sleep: {agent.lastSleepTime || agent.lastActive}</span>
+                </div>
+
+                <div className="flex items-center gap-2 pt-1 border-t border-zinc-900">
+                  <button
+                    onClick={() => handleWakeUpAgent(agent.id)}
+                    className="flex-1 bg-yellow-500 hover:bg-yellow-400 text-zinc-950 font-extrabold text-[10px] py-1.5 rounded-lg flex items-center justify-center gap-1 transition-all shadow-md cursor-pointer"
+                  >
+                    <Play className="w-3 h-3 fill-current" />
+                    <span>Wake Up & Assign</span>
+                  </button>
+                  <button
+                    onClick={() => handleSyncAgentsMd(agent.id)}
+                    className="px-2.5 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-[10px] font-mono rounded-lg border border-zinc-800 transition-colors cursor-pointer"
+                    title="Sync AGENTS.md Instructions"
+                  >
+                    <RefreshCw className="w-3 h-3 text-yellow-400" />
+                  </button>
+                </div>
+              </div>
+            ))
+          )}
         </div>
       </div>
 
@@ -613,12 +752,51 @@ export function AgentsView({ agents, onSelectAgent, onToggleStatus }: AgentsView
 
                 </div>
 
-                {/* Card footer details */}
-                <div className="flex items-center justify-between text-[10px] text-zinc-500 mt-3 pt-3 border-t border-zinc-850 font-mono">
-                  <span>ACTIVE: {agent.lastActive}</span>
-                  <span className="text-yellow-400 font-bold flex items-center gap-1 group-hover:translate-x-1 transition-transform">
-                    Tune <ArrowRight className="w-3 h-3" />
-                  </span>
+                {/* Card Footer: Redis DB Badge, Sleep/Wake & Sync controls */}
+                <div className="mt-3 pt-3 border-t border-zinc-850 font-mono space-y-2">
+                  <div className="flex items-center justify-between text-[10px] text-zinc-400">
+                    <span className="bg-zinc-900 border border-zinc-800 px-2 py-0.5 rounded text-[9px] text-yellow-400 font-bold">
+                      REDIS DB {agent.redisDbIndex || 1}
+                    </span>
+                    <span className="text-zinc-500">Active: {agent.lastActive}</span>
+                  </div>
+
+                  <div className="flex items-center gap-2 pt-1">
+                    {agent.status === 'working' ? (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleSleepAgent(agent.id);
+                        }}
+                        className="flex-1 bg-zinc-850 hover:bg-zinc-700 text-yellow-400 font-extrabold text-[10px] py-1.5 rounded-lg border border-yellow-500/30 flex items-center justify-center gap-1 transition-all cursor-pointer shadow-sm"
+                      >
+                        <Moon className="w-3 h-3" />
+                        <span>Sleep to Standby</span>
+                      </button>
+                    ) : (
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleWakeUpAgent(agent.id);
+                        }}
+                        className="flex-1 bg-yellow-500 hover:bg-yellow-400 text-zinc-950 font-extrabold text-[10px] py-1.5 rounded-lg flex items-center justify-center gap-1 transition-all cursor-pointer shadow-md"
+                      >
+                        <Play className="w-3 h-3 fill-current" />
+                        <span>Wake Up Node</span>
+                      </button>
+                    )}
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        handleSyncAgentsMd(agent.id);
+                      }}
+                      className="px-2.5 py-1.5 bg-zinc-900 hover:bg-zinc-800 text-zinc-300 text-[10px] font-mono rounded-lg border border-zinc-800 transition-colors cursor-pointer"
+                      title="Sync AGENTS.md Instructions"
+                    >
+                      <RefreshCw className="w-3 h-3 text-yellow-400" />
+                    </button>
+                  </div>
                 </div>
               </div>
             </div>

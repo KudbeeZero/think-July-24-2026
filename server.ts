@@ -25,6 +25,7 @@ import { agentDb } from "./src/db/agent";
 import * as schema from "./src/db/schema";
 import { globalErrorHandler } from "./src/middleware/errorHandler.ts";
 import { env } from "./src/lib/env.ts";
+import { entityCacheProxy } from "./src/server/entityCacheProxy.ts";
 
 dotenv.config();
 
@@ -1277,6 +1278,47 @@ async function startServer() {
   // GET latest think tokens
   app.get("/api/agents/think-tokens", (req, res) => {
     res.json(latestThinkTokens);
+  });
+
+  // === DoorDash-Inspired Entity Cache Proxy (ECP) Routes ===
+  // GET ECP Cache Performance & Hit/Miss Metrics
+  app.get("/api/ecp/metrics", (req, res) => {
+    res.json(entityCacheProxy.getMetrics());
+  });
+
+  // GET Transparent Entity Read-Through Proxy with Singleflight Coalescing
+  app.get("/api/ecp/entity/:type/:id", async (req, res) => {
+    const { type, id } = req.params;
+    try {
+      const data = await entityCacheProxy.getOrFetch(
+        type,
+        id,
+        async () => {
+          // Simulated DB latency of 120ms to demonstrate coalescing & L1/L2 savings
+          await new Promise((resolve) => setTimeout(resolve, 120));
+          return {
+            entityType: type,
+            id,
+            name: `${type.toUpperCase()}_RECORD_${id}`,
+            status: "ACTIVE",
+            updatedAt: new Date().toISOString(),
+            schemaVersion: "v2.1",
+            metadata: { owner: "Kudbee-ECP-Engine", tier: "High-Throughput-Persistent" }
+          };
+        },
+        300
+      );
+      res.json({ success: true, data, ecpMetrics: entityCacheProxy.getMetrics() });
+    } catch (err: any) {
+      res.status(500).json({ success: false, error: err.message });
+    }
+  });
+
+  // POST Invalidate ECP cache for entity
+  app.post("/api/ecp/entity/:type/:id/invalidate", async (req, res) => {
+    const { type, id } = req.params;
+    await entityCacheProxy.invalidate(type, id);
+    res.json({ success: true, message: `Invalidated ECP cache for ${type}:${id}`, metrics: entityCacheProxy.getMetrics() });
   });
 
   // POST manually dispatch an agent
