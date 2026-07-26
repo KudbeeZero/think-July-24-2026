@@ -26,6 +26,7 @@ import * as schema from "./src/db/schema";
 import { globalErrorHandler } from "./src/middleware/errorHandler.ts";
 import { env } from "./src/lib/env.ts";
 import { entityCacheProxy } from "./src/server/entityCacheProxy.ts";
+import { rootRouter } from "./src/server/routes/index.ts";
 
 dotenv.config();
 
@@ -141,6 +142,16 @@ async function startServer() {
   githubSync.on('error', (err) => {
     console.error('Failed to start GitHub Sync Daemon:', err);
   });
+  
+  console.log('Starting MCP Server...');
+  const mcpServer = spawn('npx', ['tsx', 'services/mcp_server.ts'], {
+    stdio: 'inherit',
+    cwd: process.cwd()
+  });
+
+  mcpServer.on('error', (err) => {
+    console.error('Failed to start MCP Server:', err);
+  });
 
   // Think Token System State & Road Map Variables (Phase 1)
   let challengeModeActive = false;
@@ -175,6 +186,9 @@ async function startServer() {
 
   // Middleware for parsing JSON
   app.use(express.json());
+  
+  // V1 API Routes with specific AI and configs
+  app.use("/api", rootRouter);
 
   // Resilient Grok API proxy with multi-tier fallback
   app.post('/api/grok/ask', kiloBridgeMiddleware, async (req, res) => {
