@@ -1,3 +1,4 @@
+import { kiloBridgeMiddleware } from "./src/middleware/kiloBridge.ts";
 import express from "express";
 import path from "path";
 import crypto from "crypto";
@@ -122,12 +123,16 @@ async function startServer() {
 
   const app = express();
   const PORT = 3000;
+  // Basic health check route
+  app.get("/api/health", (req, res) => {
+    res.json({ status: "ok" });
+  });
 
   // Middleware for parsing JSON
   app.use(express.json());
 
   // Resilient Grok API proxy with multi-tier fallback
-  app.post('/api/grok/ask', async (req, res) => {
+  app.post('/api/grok/ask', kiloBridgeMiddleware, async (req, res) => {
     const { proxy, message, model = 'grok-3-fast', extra_data, challengeResponse } = req.body;
     const systemPrompt = "You are Grok 3, xAI's direct, highly capable, witty, and deeply analytical AI engine. Answer the user's request thoroughly, accurately, and directly.";
 

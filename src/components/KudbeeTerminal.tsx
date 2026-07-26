@@ -1,5 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import {
+  Mic,
+  MicOff,
   SquareTerminal,
   Send,
   X,
@@ -72,6 +74,7 @@ export const KudbeeTerminal: React.FC<KudbeeTerminalProps> = ({
 
   const [inputMessage, setInputMessage] = useState('');
   const [isLoading, setIsLoading] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [extraDataState, setExtraDataState] = useState<any>(null);
 

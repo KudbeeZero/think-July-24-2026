@@ -95,3 +95,10 @@ When generating prompts or instructions for the Kilo Cloud Agent, you MUST adher
   - [ ] Fix PCA reducer...
   - [ ] Redis EVAL governance...
 <!-- AUTO-SYNC-END -->
+
+---
+
+# 90-Day Production Build Roadmap
+The agent must refer to **`PRODUCTION_90_DAY_ROADMAP.md`** for the comprehensive plan of the next 10 PRs. 
+The focus of this 90-day phase is specifically linking all of the middleware to the frontend to permanently resolve the black screen, add real-time telemetry pipelines, and scaffold full production resilience (SQLite, WS, etc.). 
+In upcoming sessions, agents will execute 10 to 20 commits per PR to achieve these milestones.
