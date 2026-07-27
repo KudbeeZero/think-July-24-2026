@@ -30,7 +30,8 @@ export function startMcpServer() {
   });
 }
 
-// Support direct execution
-if (require.main === module) {
+// Support direct execution in ESM
+import { fileURLToPath } from 'url';
+if (process.argv[1] === fileURLToPath(import.meta.url)) {
   startMcpServer();
 }

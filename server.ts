@@ -134,7 +134,7 @@ async function startServer() {
   });
 
   console.log('Starting GitHub Sync Daemon Cluster...');
-  const githubSync = spawn('npx', ['tsx', 'app/applet/services/github_agent.ts'], {
+  const githubSync = spawn('npx', ['tsx', 'services/github_agent.ts'], {
     stdio: 'inherit',
     cwd: process.cwd()
   });
@@ -1398,6 +1398,45 @@ async function startServer() {
     res.setHeader('Cache-Control', 'no-cache');
     res.setHeader('Connection', 'keep-alive');
     res.flushHeaders();
+
+  // KUDBEEKILO Gemini Prompt Endpoint
+  app.post("/api/chat", async (req, res) => {
+    try {
+      const { prompt } = req.body;
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        return res.status(500).json({ error: "GEMINI_API_KEY is missing." });
+      }
+
+      // We'll use global fetch to talk to the Gemini REST API directly to avoid waiting for genai package
+      const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent?key=${apiKey}`;
+      const response = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          systemInstruction: {
+            parts: [
+              {
+                text: "You are the KUDBEEKILO Blockchain Oracle & Think Token Monitoring Agent. Your role is to oversee the Think Token process, monitor smart contracts on Solana Devnet, handle blockchain URLs, and enforce the 'no-contact' sandboxed isolation between agents. Always respond in a highly technical, confident tone, referencing glass projections, heart/valve token compression, and MCP server routing."
+              }
+            ]
+          },
+          contents: [{ parts: [{ text: prompt }] }],
+          generationConfig: { maxOutputTokens: 2000 }
+        })
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        return res.status(response.status).json({ error: data.error?.message || "Gemini API error" });
+      }
+
+      const text = data.candidates?.[0]?.content?.parts?.[0]?.text || "";
+      res.json({ response: text });
+    } catch (e: any) {
+      console.error('Gemini error:', e);
+      res.status(500).json({ error: e.message });
+    }
+  });
 
     const intervalId = setInterval(() => {
       const data = {

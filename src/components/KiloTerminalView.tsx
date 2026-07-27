@@ -1,7 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useKilo } from '../context/KiloContext';
-// @ts-ignore
-import { FixedSizeList } from 'react-window';
 import { 
   Brain, 
   Cpu, 
@@ -23,6 +21,7 @@ import { NeuralNetMesh, NeuralNode, NeuralLink } from './kilo/NeuralNetMesh';
 import { DeviceSyncTopology, DeviceSyncNode } from './kilo/DeviceSyncTopology';
 import { ModelUsageMeter } from './kilo/ModelUsageMeter';
 import { ResiliencyControls } from './kilo/ResiliencyControls';
+import { ThinkTokenCube } from './ThinkTokenCube';
 import { PersistentToastTray } from './kilo/PersistentToastTray';
 import { FalloutAnalyticalCharts } from './kilo/FalloutAnalyticalCharts';
 import { SlideWindowGovernor } from './kilo/SlideWindowGovernor';
@@ -886,8 +885,9 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
 
       {/* Grid of Key Diagnostics */}
       <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
-        {/* Token Budget Meter */}
-        <div className="bg-zinc-950/60 border border-zinc-800/80 rounded-xl p-4 sm:p-5 flex flex-col justify-between backdrop-blur-md shadow-xl hover:border-yellow-500/10 transition-all">
+        {/* Token Budget Meter with 3D Isometric Think Token Cube */}
+        <div className="bg-zinc-950/60 border border-zinc-800/80 rounded-xl p-4 sm:p-5 flex flex-col justify-between backdrop-blur-md shadow-xl hover:border-purple-500/30 transition-all">
+          <ThinkTokenCube totalTokens={totalReasoningTokens} maxTokens={budgetLimit} />
           <ModelUsageMeter />
           <div className="mt-4">
             <div className="flex items-center justify-between">
@@ -1183,6 +1183,22 @@ export const KiloTerminalView: React.FC<KiloTerminalViewProps> = ({
             isTripping={isTripping}
             toggleCircuitBreaker={toggleCircuitBreaker}
           />
+        </div>
+      </div>
+
+      {/* Terminal Telemetry Virtualized List */}
+      <div className="bg-zinc-950/60 border border-zinc-800/80 rounded-xl p-4 sm:p-5 flex flex-col backdrop-blur-md shadow-xl transition-all h-64 mt-6">
+        <div className="flex items-center justify-between mb-3 border-b border-zinc-800 pb-2">
+          <h3 className="text-xs font-bold text-zinc-100 flex items-center gap-2 font-mono uppercase tracking-wider">
+            <Activity className="w-4 h-4 text-purple-400" />
+            Terminal Log Stream (Virtualized)
+          </h3>
+          <span className="text-[9px] px-2 py-0.5 rounded bg-zinc-900 border border-zinc-800 font-mono text-zinc-400">
+            {dispatchLogs.length} Events
+          </span>
+        </div>
+        <div className="flex-1 w-full bg-[#0a0d12] rounded border border-zinc-800 overflow-hidden">
+          <VirtualizedLogViewer logs={dispatchLogs as any} height={180} width="100%" />
         </div>
       </div>
     </div>

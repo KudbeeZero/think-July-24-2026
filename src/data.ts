@@ -47,7 +47,9 @@ export const INITIAL_AGENTS: Agent[] = [
     tags: ['Verified-Trace', 'Postgres-Sync', 'Think-Tokens'],
     redisDbIndex: 1,
     inStandbyRoom: true,
-    agentsMdSynced: true
+    agentsMdSynced: true,
+    latency: 12,
+    healthScore: 98
   },
   { 
     id: 'a2', 
@@ -70,7 +72,9 @@ export const INITIAL_AGENTS: Agent[] = [
     tags: ['Resilient-Pipe', 'Fail-Open', 'Rate-Limiter'],
     redisDbIndex: 2,
     inStandbyRoom: true,
-    agentsMdSynced: true
+    agentsMdSynced: true,
+    latency: 15,
+    healthScore: 96
   }
 ];
 

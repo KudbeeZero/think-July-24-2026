@@ -56,6 +56,8 @@ export interface Agent {
   inStandbyRoom?: boolean;
   agentsMdSynced?: boolean;
   assignedBeadId?: string;
+  latency?: number;
+  healthScore?: number;
 }
 
 export interface ConvoyTask {
@@ -83,7 +85,7 @@ export interface TelemetryLog {
   source?: string;
   time?: string;
   timestamp?: string;
-  type?: 'system' | 'agent' | 'success' | 'error' | 'reasoning';
+  type?: 'system' | 'agent' | 'success' | 'error' | 'reasoning' | 'info';
   reasoningTokens?: number;
   reasoningContent?: string;
 }
@@ -208,6 +210,17 @@ export interface MailItem {
   content?: string; // Long-form markdown content
   diff?: string;    // Code diffs
   severity?: 'info' | 'warning' | 'critical' | 'escalation';
+}
+
+export interface KudbeeMessage {
+  id: string;
+  sender: 'user' | 'kudbee' | 'system' | 'agent-worker';
+  text: string;
+  timestamp: string;
+  model?: string;
+  extraData?: any;
+  status?: 'sending' | 'success' | 'error' | 'working';
+  rawResponse?: any;
 }
 
 export interface NavHistoryItem {

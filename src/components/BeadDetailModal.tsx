@@ -35,6 +35,8 @@ export function BeadDetailModal({
   onUpdateAssignee,
   onDeleteBead,
 }: BeadDetailModalProps) {
+  if (!bead) return null;
+
   const containerRef = useDrawerA11y<HTMLDivElement>({
     isOpen: !!bead,
     onClose,
@@ -49,8 +51,6 @@ export function BeadDetailModal({
       time: '10 mins ago',
     },
   ]);
-
-  if (!bead) return null;
 
   const handleAddComment = (e: React.FormEvent) => {
     e.preventDefault();

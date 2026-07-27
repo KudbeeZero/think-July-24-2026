@@ -5,8 +5,10 @@ import { AuditVaultCard } from './AuditVaultCard';
 import { ThinkStoragePlugin } from './ThinkStoragePlugin';
 import { PostgresDbConsole } from './PostgresDbConsole';
 import { ChaosMonkeyCard } from './ChaosMonkeyCard';
+import { MiddlewareInspector } from './MiddlewareInspector';
+import type { TelemetryLog } from '../types';
 
-export function ObservabilityView({ liveFeed = [] }: { liveFeed?: Array<{msg: string, time: string, type: string}> }) {
+export function ObservabilityView({ liveFeed = [] }: { liveFeed?: TelemetryLog[] }) {
   const [timeRange, setTimeRange] = useState('24h');
 
   const defaultTelemetryEvents = [
@@ -122,6 +124,9 @@ export function ObservabilityView({ liveFeed = [] }: { liveFeed?: Array<{msg: st
 
       {/* 4. Chaos Resilience & Circuit Breaker Control */}
       <ChaosMonkeyCard />
+
+      {/* 5. Backend Middleware Pipeline & Governance */}
+      <MiddlewareInspector />
 
       {/* Telemetry Stream Log */}
       <div className="bg-[#161b22] border border-zinc-800/80 rounded-xl overflow-hidden">

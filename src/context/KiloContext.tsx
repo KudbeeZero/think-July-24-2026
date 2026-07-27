@@ -258,8 +258,55 @@ export const KiloProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const data = JSON.parse(event.data);
         const source = data.source || 'System';
         const eventMsg = data.event || `Metrics Tick: CPU ${data.cpu || '12%'} | Memory ${data.memory || '240MB'} | Swarm ${data.workerMode || 'active'}`;
-        const type = source === 'System' ? 'success' : (source === 'User' ? 'success' : 'agent');
+        const type = data.type || (source === 'System' ? 'success' : (source === 'User' ? 'success' : 'agent'));
         
+        // 1. Dynamic Live Agent Updates over Real-Time Telemetry Stream
+        if (data.agentId || data.agentName) {
+          setAgents(prev => prev.map(ag => {
+            const isTarget = ag.id === data.agentId || ag.name.toLowerCase() === (data.agentName || '').toLowerCase();
+            if (isTarget) {
+              return { 
+                ...ag, 
+                status: data.agentStatus || ag.status, 
+                hooked: data.hooked || ag.hooked,
+                latency: data.latency || Math.floor(Math.random() * 12) + 8,
+                healthScore: data.healthScore || Math.floor(Math.random() * 5) + 95,
+                lastActive: 'just now',
+                currentAction: data.currentAction || ag.currentAction
+              };
+            }
+            return ag;
+          }));
+        }
+
+        // 2. Job Updates for PR Tracker & Convoys
+        if (data.jobUpdate) {
+          const { beadId, status, progress, log } = data.jobUpdate;
+          if (beadId) {
+            handleUpdateBeadStatus(beadId, status);
+            // Optionally push log to live feed if it's a critical step
+            if (log) {
+              setLiveFeed(prev => {
+                const newEntry: TelemetryLog = {
+                  msg: `[JOB ${beadId}] ${log}`,
+                  event: log,
+                  source: 'JobRunner',
+                  time: 'just now',
+                  type: 'info'
+                };
+                const next = [newEntry, ...prev].slice(0, 100);
+                return next as TelemetryLog[];
+              });
+            }
+          }
+        }
+
+        // 3. System Alerts & Toasts
+        if (data.severity === 'critical' || data.severity === 'escalation') {
+          handleAddDemoToast(data.title || 'System Alert', data.event || 'Critical anomaly detected', data.severity);
+        }
+
+        // 4. Update Main Live Feed
         setLiveFeed(prev => {
           const newEntry: TelemetryLog = {
             msg: `[${source}] ${eventMsg}`,
@@ -268,7 +315,8 @@ export const KiloProvider: React.FC<{ children: React.ReactNode }> = ({ children
             time: 'just now',
             type: type as any
           };
-          return [newEntry, ...prev].slice(0, 50); // Keep last 50 events
+          const next = [newEntry, ...prev].slice(0, 100);
+          return next as TelemetryLog[];
         });
       } catch (err) {
         console.error('Failed to parse SSE data:', err);
@@ -520,7 +568,7 @@ We are **completely deprecating** the use of the \`REDIS_RATE_LIMIT_URL\` enviro
         {
           msg: `Reconciled ${totalReasoningTokens.toLocaleString()} Think-Tokens to secure DB. Conflict status: CLEAN.`,
           time: 'just now',
-          type: 'success',
+          type: 'success' as const,
           source: 'MemoryVault'
         },
         ...prev
@@ -535,14 +583,19 @@ We are **completely deprecating** the use of the \`REDIS_RATE_LIMIT_URL\` enviro
   const agentHeartbeat = (agentId: string) => {
     setAgents(prev => prev.map(a => 
       a.id === agentId 
-        ? { ...a, lastActive: 'just now' } 
+        ? { 
+            ...a, 
+            lastActive: 'just now',
+            latency: Math.floor(Math.random() * 5) + 5, // Fast response on manual heartbeat
+            healthScore: Math.min(100, (a.healthScore || 95) + 1)
+          } 
         : a
     ));
     setLiveFeed(prev => [
       {
         msg: `Pulse check OK for Agent ${agentId}`,
         time: 'just now',
-        type: 'success',
+        type: 'success' as const,
         source: agentId
       },
       ...prev

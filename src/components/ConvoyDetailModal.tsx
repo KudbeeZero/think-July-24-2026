@@ -16,12 +16,12 @@ export const ConvoyDetailModal: React.FC<ConvoyDetailModalProps> = ({
   onSelectBead,
   beads = []
 }) => {
+  if (!convoy) return null;
+
   const containerRef = useDrawerA11y<HTMLDivElement>({
     isOpen: !!convoy,
     onClose,
   });
-
-  if (!convoy) return null;
 
   const progressPercent = convoy.totalTasks > 0
     ? Math.round((convoy.completedTasks / convoy.totalTasks) * 100)

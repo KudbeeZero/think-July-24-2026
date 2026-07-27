@@ -33,6 +33,7 @@ import {
   Sparkles,
   Cpu,
   Brain,
+  Coins,
 } from 'lucide-react';
 import { INITIAL_BEADS, INITIAL_AGENTS, INITIAL_CONVOYS, INITIAL_MAIL_ITEMS } from './data';
 import { Bead, Agent, Convoy, Status, Priority, MailItem } from './types';
@@ -55,7 +56,9 @@ import { McpView } from './components/McpView';
 import { SystemTrackerView } from './components/SystemTrackerView';
 import { KiloTerminalView } from './components/KiloTerminalView';
 import { ThinkTokenVault } from './components/ThinkTokenVault';
+import { SolanaTokenomicsView } from './components/SolanaTokenomicsView';
 import { RackMountWrapper } from './components/kilo/RackMountWrapper';
+import { GeminiChatDrawer } from './components/GeminiChatDrawer';
 
 export default function App() {
   const {
@@ -377,6 +380,25 @@ export default function App() {
 
           <button
             onClick={() => {
+              setActiveNav('solana-tokenomics');
+              setIsSidebarOpen(false);
+            }}
+            className={`flex items-center justify-between px-3 py-2 text-sm rounded-md transition-colors text-left ${
+              activeNav === 'solana-tokenomics'
+                ? 'text-purple-300 bg-purple-950/60 font-bold border border-purple-500/40'
+                : 'text-zinc-400 hover:text-purple-300 hover:bg-purple-950/30'
+            }`}
+          >
+            <span className="flex items-center gap-3">
+              <Coins className="w-4 h-4 text-purple-400" /> Solana & Whitepaper
+            </span>
+            <span className="text-[9px] uppercase font-mono px-1.5 py-0.5 rounded bg-purple-500/20 text-purple-300 font-bold border border-purple-500/30">
+              Devnet
+            </span>
+          </button>
+
+          <button
+            onClick={() => {
               setIsGrokTerminalOpen(!isGrokTerminalOpen);
               setIsSidebarOpen(false);
             }}
@@ -684,7 +706,13 @@ export default function App() {
         </div>
 
         {/* View Switcher Output */}
-        {activeNav === 'think-token-vault' ? (
+        {activeNav === 'solana-tokenomics' ? (
+          <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <RackMountWrapper title="Solana & Whitepaper">
+              <SolanaTokenomicsView />
+            </RackMountWrapper>
+          </div>
+        ) : activeNav === 'think-token-vault' ? (
           <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
             <RackMountWrapper title="Think Token Vault">
               <ThinkTokenVault />
@@ -781,93 +809,7 @@ export default function App() {
           showTerminalMobile ? 'translate-x-0' : 'translate-x-full xl:translate-x-0'
         }`}
       >
-        <div className="flex items-center justify-between bg-[#0a0d12] border-b border-zinc-800/80 px-3 sm:px-4 py-3 sm:py-2 shrink-0">
-          <div className="flex items-center gap-2 text-xs sm:text-xs font-semibold text-yellow-500">
-            <SquareTerminal className="w-4 h-4 sm:w-4 sm:h-4 text-yellow-500" />
-            <span>Kudbee Agent Dispatch Console</span>
-          </div>
-          <button
-            onClick={() => setShowTerminalMobile(false)}
-            className="xl:hidden p-2 -mr-2 text-zinc-500 hover:text-zinc-300 active:scale-95 transition-transform bg-zinc-900 rounded-lg border border-zinc-800"
-          >
-            <X className="w-5 h-5" />
-          </button>
-        </div>
-
-        {/* Terminal Content Stream */}
-        <div className="flex-1 overflow-y-auto p-4 flex flex-col gap-4 text-zinc-300 leading-relaxed">
-          <div className="flex items-center justify-between pb-2 border-b border-zinc-800">
-            <div className="flex items-center gap-2 text-green-400 font-semibold text-[11px]">
-              <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-              <span>Mayor Dispatch Operational</span>
-            </div>
-            <button
-              onClick={handleCopyPrompt}
-              className="flex items-center gap-1.5 px-2.5 py-1 bg-[#161b22] hover:bg-zinc-800 border border-zinc-700/60 rounded text-[10px] text-yellow-400 font-semibold transition-colors"
-            >
-              {promptCopied ? (
-                <>
-                  <Check className="w-3 h-3 text-green-400" /> Copied!
-                </>
-              ) : (
-                <>
-                  <Copy className="w-3 h-3" /> Copy Kudbee Prompt
-                </>
-              )}
-            </button>
-          </div>
-
-          <div className="space-y-3 font-mono text-[10px] leading-relaxed">
-            <p className="text-zinc-400">
-              <strong className="text-emerald-400">System Status: Front-End Prototype Mode</strong>
-              <br />
-              Notice: The dashboard is currently running on local mock data for UI/UX rapid prototyping. It is not yet connected to the live Postgres/Redis backend.
-            </p>
-
-            <div className="bg-[#0a0d12] border border-zinc-700/60 rounded-md p-3 relative group">
-              <div className="flex items-center justify-between text-[9px] text-zinc-500 font-sans uppercase font-bold mb-1.5">
-                <span>Proposed 15-Commit Roadmap (5 New Upgrades)</span>
-                <span className="text-yellow-500">Next Steps</span>
-              </div>
-              <ul className="text-zinc-300 font-mono text-[10px] leading-relaxed space-y-1 select-all list-none pl-0">
-                <li><span className="text-blue-400">feat(api):</span> scaffold Express server with Vite middleware for full-stack architecture</li>
-                <li><span className="text-blue-400">feat(telemetry):</span> implement WebSocket listener for real-time agent observability stream</li>
-                <li><span className="text-blue-400">feat(db):</span> wire up single-container Postgres schema for ingestion server syncing</li>
-                <li><span className="text-blue-400">feat(topology):</span> build interactive SVG node graph for System Topology visualization</li>
-                <li><span className="text-blue-400">feat(ui):</span> implement real-time Activity Feed for agent lifecycle events</li>
-                <li><span className="text-purple-400">refactor(state):</span> migrate mock data to React Context API to prepare for live backend</li>
-                <li><span className="text-blue-400">feat(memory):</span> create Memory Vault UI to inspect semantic recall and vector embeddings</li>
-                <li><span className="text-blue-400">feat(auth):</span> add secure environment variable masking and operator authentication</li>
-                <li><span className="text-yellow-400">perf(terminal):</span> implement virtualized list for high-throughput log streaming</li>
-                <li><span className="text-green-400">style(layout):</span> enhance responsive grid for fluid mobile-to-desktop scaling</li>
-                {/* Advanced Upgrades */}
-                <li className="pt-2 border-t border-zinc-800/50 mt-2"><span className="text-green-400">build(heroku):</span> <span className="text-zinc-200">complete Express+Vite production build pipeline (server.ts)</span></li>
-                <li><span className="text-purple-400">feat(state):</span> <span className="text-zinc-200">implement robust `useLocalStorage` for resilient session caching</span></li>
-                <li><span className="text-blue-400">feat(db):</span> <span className="text-zinc-200">provision single-container Drizzle/Postgres ORM setup</span></li>
-                <li><span className="text-blue-400">feat(realtime):</span> <span className="text-zinc-200">add fallback HTTP long-polling for WebSocket telemetry</span></li>
-                <li><span className="text-green-400">feat(mobile):</span> <span className="text-zinc-200">optimize mobile bottom nav safe-area constraints for PWA support</span></li>
-              </ul>
-            </div>
-
-            <div className="bg-[#0a0d12] border border-zinc-700/60 rounded-md p-3 relative group mt-4">
-              <div className="flex items-center justify-between text-[9px] text-zinc-500 font-sans uppercase font-bold mb-1.5">
-                <span>Staged Convoy Mission Prompt</span>
-                <span className="text-yellow-500">Phase 11 Sync</span>
-              </div>
-              <pre className="text-zinc-300 whitespace-pre-wrap font-mono text-[10px] leading-relaxed max-h-64 overflow-y-auto select-all">
-                {KILO_PROMPT_TEXT}
-              </pre>
-            </div>
-          </div>
-        </div>
-
-        {/* Console Input Footer */}
-        <div className="p-3 bg-[#0a0d12] border-t border-zinc-800/80 shrink-0">
-          <div className="flex items-center justify-between text-zinc-500 text-[10px] font-mono">
-            <span>Model: DeepSeek V4 Pro</span>
-            <span className="text-green-400 font-semibold">CI Green</span>
-          </div>
-        </div>
+        <GeminiChatDrawer />
       </div>
 
       {/* Modals & Detail Drawers */}

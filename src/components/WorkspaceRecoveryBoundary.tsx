@@ -11,8 +11,7 @@ interface State {
   errorInfo: ErrorInfo | null;
 }
 
-// @ts-ignore - React error boundary inheritance
-export class WorkspaceRecoveryBoundary extends (React.Component as any) {
+export class WorkspaceRecoveryBoundary extends React.Component<Props, State> {
   constructor(props: Props) {
     super(props);
     this.state = {

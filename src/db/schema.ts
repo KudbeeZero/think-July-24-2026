@@ -1,35 +1,56 @@
-import { pgTable, serial, text, timestamp, varchar, boolean } from "drizzle-orm/pg-core";
+import { pgTable, text, integer, serial, timestamp } from 'drizzle-orm/pg-core';
 
-// Users table for Firebase Auth integration
-export const users = pgTable("users", {
-  id: serial("id").primaryKey(),
-  uid: text("uid").notNull().unique(), // Firebase Auth UID
-  email: text("email").notNull(),
-  createdAt: timestamp("created_at").defaultNow(),
+/**
+ * Kudbee Monorepo Drizzle ORM Database Schema
+ * Production-grade PostgreSQL / Cloud SQL TypeScript schema definitions.
+ */
+
+export const users = pgTable('users', {
+  id: serial('id').primaryKey(),
+  uid: text('uid').notNull().unique(),
+  email: text('email').notNull(),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
-// === Advanced Upgrade 3: Single-Container Postgres Schema for Ingestion Server ===
-export const agents = pgTable("agents", {
-  id: serial("id").primaryKey(),
-  name: varchar("name", { length: 255 }).notNull(),
-  role: varchar("role", { length: 50 }).notNull(),
-  status: varchar("status", { length: 50 }).default("offline"),
-  createdAt: timestamp("created_at").defaultNow(),
+export const agents = pgTable('agents', {
+  id: text('id').primaryKey().$defaultFn(() => `ag_${Date.now()}`),
+  name: text('name').notNull(),
+  role: text('role'),
+  status: text('status').notNull().default('IDLE'),
+  hooked: text('hooked'),
+  clearanceLevel: integer('clearance_level').notNull().default(1),
+  updatedAt: timestamp('updated_at').notNull().defaultNow(),
 });
 
-export const beads = pgTable("beads", {
-  id: serial("id").primaryKey(),
-  title: text("title").notNull(),
-  description: text("description"),
-  status: varchar("status", { length: 50 }).default("open"),
-  priority: varchar("priority", { length: 50 }).default("medium"),
-  assigneeId: serial("assignee_id").references(() => agents.id),
-  createdAt: timestamp("created_at").defaultNow(),
+export const beads = pgTable('beads', {
+  id: text('id').primaryKey(),
+  title: text('title').notNull(),
+  status: text('status').notNull().default('OPEN'),
+  priority: text('priority').notNull().default('MEDIUM'),
+  assignee: text('assignee'),
+  createdAt: timestamp('created_at').notNull().defaultNow(),
 });
 
-export const telemetry_logs = pgTable("telemetry_logs", {
-  id: serial("id").primaryKey(),
-  source: varchar("source", { length: 255 }).notNull(),
-  event: text("event").notNull(),
-  timestamp: timestamp("timestamp").defaultNow(),
+export const telemetry_logs = pgTable('telemetry_logs', {
+  id: serial('id').primaryKey(),
+  nodeId: text('node_id').default('node_0'),
+  source: text('source').notNull(),
+  event: text('event'),
+  eventMsg: text('event_msg'),
+  proofOfComputeHash: text('proof_of_compute_hash'),
+  timestamp: text('timestamp').default('just now'),
 });
+
+export const think_token_tx = pgTable('think_token_tx', {
+  id: text('id').primaryKey(),
+  agentId: text('agent_id'),
+  amount: integer('amount').notNull(),
+  reason: text('reason').notNull(),
+  timestamp: text('timestamp').notNull(),
+});
+
+// Aliases for camelCase compatibility
+export const agentsTable = agents;
+export const beadsTable = beads;
+export const telemetryLogsTable = telemetry_logs;
+export const usersTable = users;

@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useSoundEffects } from '../../hooks/useSoundEffects';
 import { Sparkles, RefreshCw, Zap, Sliders, ChevronDown, ChevronUp } from 'lucide-react';
+import { DigitalSpectrumAnalyzer } from './DigitalSpectrumAnalyzer';
 
 interface RackMountWrapperProps {
   children: React.ReactNode;
@@ -212,115 +213,16 @@ export function RackMountWrapper({ children, title, className = '', showAgentSta
             ))}
           </div>
 
-          {/* ================== DYNAMIC SYNTHESIZER OSCILLOSCOPE CONTROL DECK ================== */}
+          {/* ================== DYNAMIC DIGITAL DSP RACK ANALYZER DECK ================== */}
           <AnimatePresence>
             {showFrontInstruments && (
               <motion.div 
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, height: 0 }}
-                className="mb-4 bg-zinc-950 border border-zinc-850 rounded-xl p-3 grid grid-cols-1 md:grid-cols-12 gap-3 overflow-hidden select-none z-20 relative"
+                className="mb-4"
               >
-                {/* 1. Oscilloscope Screen */}
-                <div className="md:col-span-5 bg-[#070b10] border border-emerald-950 rounded-lg p-2 flex flex-col justify-between relative overflow-hidden h-24">
-                  {/* Scope Grid lines */}
-                  <div className="absolute inset-0 bg-[linear-gradient(rgba(16,185,129,0.03)_1px,transparent_1px),linear-gradient(90deg,rgba(16,185,129,0.03)_1px,transparent_1px)] bg-[size:10px_10px] pointer-events-none" />
-                  
-                  <div className="flex items-center justify-between text-[8px] font-mono text-emerald-600 tracking-wider z-10 border-b border-emerald-950 pb-0.5">
-                    <span>KUDBEE ANALOG WAVE ANALYZER</span>
-                    <span className="animate-pulse text-emerald-400 font-bold uppercase">{waveType}</span>
-                  </div>
-
-                  {/* Wave Canvas SVG */}
-                  <div className="flex-1 w-full flex items-center justify-center relative mt-1">
-                    <svg className="w-full h-12 overflow-visible">
-                      <path 
-                        d={getWavePath()}
-                        fill="transparent"
-                        stroke="#10b981"
-                        strokeWidth="2.5"
-                        strokeLinecap="round"
-                        className="drop-shadow-[0_0_6px_rgba(16,185,129,0.8)]"
-                      />
-                    </svg>
-                  </div>
-
-                  <div className="text-[7px] font-mono text-emerald-800 flex justify-between z-10 pt-0.5 border-t border-emerald-950">
-                    <span>RATE: {oscRate}Hz</span>
-                    <span>AMP: {oscAmp}%</span>
-                  </div>
-                </div>
-
-                {/* 2. Wave selector buttons */}
-                <div className="md:col-span-3 flex flex-col justify-between gap-1">
-                  <span className="text-[8px] font-bold text-zinc-500 uppercase tracking-widest text-center md:text-left">WAVE TYPE</span>
-                  <div className="grid grid-cols-2 gap-1.5 flex-1">
-                    {(['sine', 'square', 'triangle', 'noise'] as const).map(type => (
-                      <button
-                        key={type}
-                        onClick={() => {
-                          playPlug();
-                          setWaveType(type);
-                        }}
-                        className={`text-[9px] font-bold py-1 px-1 rounded uppercase tracking-tighter transition-colors border ${
-                          waveType === type 
-                            ? 'bg-emerald-500 text-zinc-950 border-emerald-400 font-black shadow-[0_0_8px_rgba(16,185,129,0.3)]' 
-                            : 'bg-zinc-900 text-zinc-400 border-zinc-800 hover:bg-zinc-800'
-                        }`}
-                      >
-                        {type}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-
-                {/* 3. Rotary Dials */}
-                <div className="md:col-span-4 flex items-center justify-around bg-zinc-900 border border-zinc-850 rounded-lg p-1">
-                  
-                  {/* Knob 1: RATE */}
-                  <div className="flex flex-col items-center select-none w-16">
-                    <span className="text-[7px] text-zinc-500 uppercase font-black tracking-widest mb-1">RATE</span>
-                    <div 
-                      className="relative w-10 h-10 rounded-full bg-zinc-850 border border-zinc-950 shadow-[inset_0_2px_4px_rgba(255,255,255,0.05),0_2px_4px_rgba(0,0,0,0.5)] flex items-center justify-center cursor-pointer group hover:border-zinc-700 transition-colors"
-                      onClick={() => {
-                        const nextVal = oscRate >= 100 ? 10 : oscRate + 10;
-                        setOscRate(nextVal);
-                        playTwist(250 + nextVal * 3);
-                      }}
-                    >
-                      {/* Rotary Line */}
-                      <div 
-                        className="absolute w-1 h-3 bg-emerald-500 rounded-full top-1 origin-bottom transition-transform duration-300"
-                        style={{ transform: `rotate(${((oscRate - 10) / 90) * 270 - 135}deg)` }}
-                      />
-                      <div className="w-5 h-5 rounded-full bg-zinc-900 border border-zinc-800 shadow-inner" />
-                    </div>
-                    <span className="text-[9px] font-mono text-zinc-300 font-extrabold mt-1">{oscRate}Hz</span>
-                  </div>
-
-                  {/* Knob 2: AMPLITUDE */}
-                  <div className="flex flex-col items-center select-none w-16">
-                    <span className="text-[7px] text-zinc-500 uppercase font-black tracking-widest mb-1">AMP</span>
-                    <div 
-                      className="relative w-10 h-10 rounded-full bg-zinc-850 border border-zinc-950 shadow-[inset_0_2px_4px_rgba(255,255,255,0.05),0_2px_4px_rgba(0,0,0,0.5)] flex items-center justify-center cursor-pointer group hover:border-zinc-700 transition-colors"
-                      onClick={() => {
-                        const nextVal = oscAmp >= 100 ? 10 : oscAmp + 15;
-                        setOscAmp(nextVal);
-                        playTwist(200 + nextVal * 2);
-                      }}
-                    >
-                      {/* Rotary Line */}
-                      <div 
-                        className="absolute w-1 h-3 bg-amber-500 rounded-full top-1 origin-bottom transition-transform duration-300"
-                        style={{ transform: `rotate(${((oscAmp - 10) / 90) * 270 - 135}deg)` }}
-                      />
-                      <div className="w-5 h-5 rounded-full bg-zinc-900 border border-zinc-800 shadow-inner" />
-                    </div>
-                    <span className="text-[9px] font-mono text-zinc-300 font-extrabold mt-1">{oscAmp}%</span>
-                  </div>
-
-                </div>
-
+                <DigitalSpectrumAnalyzer agentName={title || 'KUDBEE RACK NODE'} />
               </motion.div>
             )}
           </AnimatePresence>
@@ -332,168 +234,212 @@ export function RackMountWrapper({ children, title, className = '', showAgentSta
 
         {/* ==================== REAR PANEL (FLIPPED BACK PANEL) ==================== */}
         <div 
-          className="absolute inset-0 w-full bg-[#0a0a0d] border-t-2 border-l-2 border-zinc-700 border-b-2 border-r-2 border-zinc-950 rounded-lg p-5 shadow-[0_20px_25px_-5px_rgba(0,0,0,0.8)] [backface-visibility:hidden] [transform:rotateY(180deg)] z-30 overflow-hidden flex flex-col justify-between"
+          className="absolute inset-0 w-full bg-[#111215] border-2 border-zinc-800 rounded-lg p-4 sm:p-5 shadow-[0_25px_30px_-5px_rgba(0,0,0,0.9)] [backface-visibility:hidden] [transform:rotateY(180deg)] z-30 overflow-hidden"
           style={{ backfaceVisibility: 'hidden' }}
         >
-          {/* Custom Ventilation Slots */}
-          <div className="flex flex-col gap-1.5 opacity-20 w-1/3 absolute top-6 left-6 pointer-events-none">
-            {[...Array(5)].map((_, idx) => (
-              <div key={idx} className="h-1 bg-zinc-400 rounded w-full" />
-            ))}
-          </div>
-
-          <div className="flex items-center justify-between border-b border-zinc-900 pb-3">
-            <div className="flex items-center gap-2">
-              <Sliders className="w-4 h-4 text-amber-500" />
-              <div>
-                <h3 className="text-xs font-black text-zinc-400 font-mono tracking-widest uppercase">
-                  REAR MODULATION & CV MATRIX
-                </h3>
-                <span className="text-[8px] text-zinc-600 font-mono">CHANNEL ISOLATION IMPEDANCE: 50Ω</span>
-              </div>
+          {/* Inner Wrapper flipped horizontally [scaleX(-1)] to fix rear view text mirroring */}
+          <div className="w-full h-full flex flex-col justify-between [transform:scaleX(-1)] select-none">
+            
+            {/* Corner Industrial Chassis Screws (Screenshot 2 Match) */}
+            <div className="absolute top-2 left-2 w-2.5 h-2.5 rounded-full bg-zinc-600 border border-zinc-950 shadow-inner flex items-center justify-center">
+              <div className="w-1.5 h-0.5 bg-zinc-900 rotate-45" />
+            </div>
+            <div className="absolute top-2 right-2 w-2.5 h-2.5 rounded-full bg-zinc-600 border border-zinc-950 shadow-inner flex items-center justify-center">
+              <div className="w-1.5 h-0.5 bg-zinc-900 -rotate-12" />
+            </div>
+            <div className="absolute bottom-2 left-2 w-2.5 h-2.5 rounded-full bg-zinc-600 border border-zinc-950 shadow-inner flex items-center justify-center">
+              <div className="w-1.5 h-0.5 bg-zinc-900 rotate-90" />
+            </div>
+            <div className="absolute bottom-2 right-2 w-2.5 h-2.5 rounded-full bg-zinc-600 border border-zinc-950 shadow-inner flex items-center justify-center">
+              <div className="w-1.5 h-0.5 bg-zinc-900 rotate-30" />
             </div>
 
-            {/* Back Panel Control switches */}
-            <div className="flex items-center gap-2">
-              <button
-                onClick={triggerCableWobble}
-                className="px-2.5 py-1 rounded bg-zinc-900 hover:bg-zinc-850 border border-zinc-800 text-yellow-500 font-bold text-[9px] uppercase tracking-wider shadow-sm transition-all active:scale-95"
-              >
-                ⚡ Shake Cables
-              </button>
-
-              <button
-                onClick={handleFlip}
-                className="px-2.5 py-1 rounded bg-gradient-to-r from-zinc-800 to-zinc-900 border border-zinc-700 hover:from-zinc-750 text-yellow-500 font-black text-[9px] uppercase tracking-wider flex items-center gap-1 shadow-md transition-all hover:scale-105 active:scale-95"
-              >
-                <RefreshCw className="w-2.5 h-2.5" />
-                <span>Front View</span>
-              </button>
-            </div>
-          </div>
-
-          {/* Swinging Patch Cables & Sockets Area */}
-          <div className="relative flex-1 w-full flex items-center justify-around my-4 min-h-[140px]">
-            {/* SVG Cable Overlay with Wobble Animations */}
-            <svg className="absolute inset-0 w-full h-full pointer-events-none overflow-visible">
-              
-              {/* Cable 1: Yellow (CV Out to LFO In) */}
-              <motion.path 
-                key={`cable-yellow-${cableShakeKey}`}
-                d="M 60,60 C 100,180 180,180 220,60"
-                fill="transparent"
-                stroke="#eab308"
-                strokeWidth="5"
-                strokeLinecap="round"
-                initial={{ d: "M 60,60 C 100,180 180,180 220,60" }}
-                animate={{ 
-                  d: [
-                    "M 60,60 C 100,210 180,210 220,60",
-                    "M 60,60 C 95,160 185,160 220,60",
-                    "M 60,60 C 105,190 175,190 220,60",
-                    "M 60,60 C 100,180 180,180 220,60"
-                  ]
-                }}
-                transition={{ 
-                  type: 'tween', 
-                  ease: 'easeInOut',
-                  duration: 0.5 
-                }}
-                className="opacity-90 cursor-pointer pointer-events-auto"
-                onClick={triggerCableWobble}
-              />
-              <path d="M 60,60 C 100,180 180,180 220,60" fill="transparent" stroke="#ca8a04" strokeWidth="1.5" strokeLinecap="round" className="opacity-50 pointer-events-none" />
-
-              {/* Cable 2: Pink (Sync Out to Rate In) */}
-              <motion.path 
-                key={`cable-pink-${cableShakeKey}`}
-                d="M 140,60 C 110,230 250,230 300,60"
-                fill="transparent"
-                stroke="#ec4899"
-                strokeWidth="5"
-                strokeLinecap="round"
-                initial={{ d: "M 140,60 C 110,230 250,230 300,60" }}
-                animate={{ 
-                  d: [
-                    "M 140,60 C 100,270 260,270 300,60",
-                    "M 140,60 C 120,200 240,200 300,60",
-                    "M 140,60 C 115,245 245,245 300,60",
-                    "M 140,60 C 110,230 250,230 300,60"
-                  ]
-                }}
-                transition={{ 
-                  type: 'tween', 
-                  ease: 'easeInOut',
-                  duration: 0.6
-                }}
-                className="opacity-80 cursor-pointer pointer-events-auto"
-                onClick={triggerCableWobble}
-              />
-              <path d="M 140,60 C 110,230 250,230 300,60" fill="transparent" stroke="#be185d" strokeWidth="1.5" strokeLinecap="round" className="opacity-40 pointer-events-none" />
-
-              {/* Cable 3: Emerald (Aux Out to Extra Gate) */}
-              <motion.path 
-                key={`cable-green-${cableShakeKey}`}
-                d="M 220,60 C 260,190 320,190 380,60"
-                fill="transparent"
-                stroke="#10b981"
-                strokeWidth="5"
-                strokeLinecap="round"
-                initial={{ d: "M 220,60 C 260,190 320,190 380,60" }}
-                animate={{ 
-                  d: [
-                    "M 220,60 C 270,220 310,220 380,60",
-                    "M 220,60 C 250,170 330,170 380,60",
-                    "M 220,60 C 265,200 315,200 380,60",
-                    "M 220,60 C 260,190 320,190 380,60"
-                  ]
-                }}
-                transition={{ 
-                  type: 'tween', 
-                  ease: 'easeInOut',
-                  duration: 0.4
-                }}
-                className="opacity-80 cursor-pointer pointer-events-auto"
-                onClick={triggerCableWobble}
-              />
-              <path d="M 220,60 C 260,190 320,190 380,60" fill="transparent" stroke="#047857" strokeWidth="1.5" strokeLinecap="round" className="opacity-40 pointer-events-none" />
-
-            </svg>
-
-            {/* Rear Jack Sockets (aligned with cable ends above) */}
-            <div className="absolute top-4 left-0 w-full flex justify-around px-8 z-20">
-              {[
-                { label: "CV In 1", color: "border-yellow-500" },
-                { label: "CV In 2", color: "border-pink-500" },
-                { label: "LFO Out", color: "border-yellow-500" },
-                { label: "Gate In", color: "border-emerald-500" },
-                { label: "Sync Out", color: "border-pink-500" },
-                { label: "Aux Out", color: "border-emerald-500" }
-              ].map((jack, idx) => (
-                <div key={idx} className="flex flex-col items-center gap-1">
-                  <div 
-                    onClick={triggerCableWobble}
-                    className={`w-9 h-9 rounded-full bg-zinc-900 border-4 ${jack.color} shadow-[inset_0_4px_8px_rgba(0,0,0,1),0_2px_4px_rgba(255,255,255,0.05)] flex items-center justify-center cursor-pointer hover:bg-zinc-800 transition-colors`}
-                  >
-                    {/* Metal center nut */}
-                    <div className="w-4 h-4 rounded-full bg-zinc-700 border-2 border-zinc-950 flex items-center justify-center">
-                      <div className="w-1.5 h-1.5 rounded-full bg-black" />
-                    </div>
-                  </div>
-                  <span className="text-[7px] font-mono text-zinc-500 uppercase tracking-tighter">{jack.label}</span>
-                </div>
+            {/* Custom Ventilation Slots */}
+            <div className="flex flex-col gap-1.5 opacity-15 w-1/4 absolute top-10 left-6 pointer-events-none">
+              {[...Array(4)].map((_, idx) => (
+                <div key={idx} className="h-1 bg-zinc-400 rounded w-full" />
               ))}
             </div>
 
-          </div>
+            {/* Rear Panel Metal Header Bar */}
+            <div className="flex items-center justify-between border-b border-zinc-800/80 pb-2.5 px-2 relative z-20">
+              <div className="flex items-center gap-2">
+                <Sliders className="w-4 h-4 text-amber-400" />
+                <div>
+                  <h3 className="text-xs font-black text-zinc-300 font-mono tracking-widest uppercase">
+                    REAR MODULATION & CV MATRIX
+                  </h3>
+                  <span className="text-[8px] text-zinc-500 font-mono">CHANNEL ISOLATION IMPEDANCE: 50Ω | BALANCED AUDIO/CV</span>
+                </div>
+              </div>
 
-          {/* Back Chassis lower bar with specifications */}
-          <div className="border-t border-zinc-900/60 pt-2 flex items-center justify-between text-[8px] font-mono text-zinc-600">
-            <span>MODEL: KUD-THINK-X900</span>
-            <span className="text-amber-500 font-bold">WARNING: DISCONNECT POWER BEFORE SERVICING</span>
-            <span>MANUFACTURED IN SWEDEN</span>
-          </div>
+              {/* Back Panel Control Buttons */}
+              <div className="flex items-center gap-2 z-30">
+                <button
+                  onClick={triggerCableWobble}
+                  className="px-2.5 py-1 rounded bg-zinc-900 hover:bg-zinc-800 border border-zinc-700 text-amber-400 font-bold text-[9px] uppercase tracking-wider shadow transition-all active:scale-95"
+                >
+                  ⚡ Shake Cables
+                </button>
 
+                <button
+                  onClick={handleFlip}
+                  className="px-2.5 py-1 rounded bg-gradient-to-r from-amber-500 to-amber-600 hover:from-amber-400 hover:to-amber-500 text-zinc-950 font-black text-[9px] uppercase tracking-wider flex items-center gap-1 shadow-md transition-all active:scale-95"
+                >
+                  <RefreshCw className="w-2.5 h-2.5" />
+                  <span>Front View</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Rear Hardware Module Panels with Metallic Hex Nuts & Cables */}
+            <div className="relative flex-1 w-full my-2 min-h-[160px] flex items-center justify-center px-4">
+              
+              {/* Scaled SVG Cable Overlay */}
+              <svg 
+                viewBox="0 0 600 160" 
+                preserveAspectRatio="none" 
+                className="absolute inset-0 w-full h-full pointer-events-none overflow-visible z-20"
+              >
+                <defs>
+                  {/* Chrome Metal Jack Plug Gradient */}
+                  <linearGradient id="chromeGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stopColor="#71717a" />
+                    <stop offset="30%" stopColor="#e4e4e7" />
+                    <stop offset="70%" stopColor="#a1a1aa" />
+                    <stop offset="100%" stopColor="#3f3f46" />
+                  </linearGradient>
+                </defs>
+
+                {/* Cable 1: Yellow (CV In 1 -> LFO Out) Jack 0 -> Jack 2 */}
+                <motion.path 
+                  key={`cable-yellow-${cableShakeKey}`}
+                  d="M 50,30 C 80,150 220,150 250,30"
+                  fill="transparent"
+                  stroke="#eab308"
+                  strokeWidth="6"
+                  strokeLinecap="round"
+                  initial={{ d: "M 50,30 C 80,150 220,150 250,30" }}
+                  animate={{ 
+                    d: [
+                      "M 50,30 C 80,175 220,175 250,30",
+                      "M 50,30 C 75,130 225,130 250,30",
+                      "M 50,30 C 85,155 215,155 250,30",
+                      "M 50,30 C 80,150 220,150 250,30"
+                    ]
+                  }}
+                  transition={{ type: 'tween', ease: 'easeInOut', duration: 0.5 }}
+                  className="opacity-95 cursor-pointer pointer-events-auto filter drop-shadow-[0_4px_6px_rgba(0,0,0,0.8)]"
+                  onClick={triggerCableWobble}
+                />
+                <path d="M 50,30 C 80,150 220,150 250,30" fill="transparent" stroke="#fef08a" strokeWidth="1.5" strokeLinecap="round" className="opacity-60 pointer-events-none" />
+
+                {/* Cable 2: Pink (CV In 2 -> Sync Out) Jack 1 -> Jack 4 */}
+                <motion.path 
+                  key={`cable-pink-${cableShakeKey}`}
+                  d="M 150,30 C 180,185 420,185 450,30"
+                  fill="transparent"
+                  stroke="#ec4899"
+                  strokeWidth="6"
+                  strokeLinecap="round"
+                  initial={{ d: "M 150,30 C 180,185 420,185 450,30" }}
+                  animate={{ 
+                    d: [
+                      "M 150,30 C 170,210 430,210 450,30",
+                      "M 150,30 C 190,160 410,160 450,30",
+                      "M 150,30 C 175,195 425,195 450,30",
+                      "M 150,30 C 180,185 420,185 450,30"
+                    ]
+                  }}
+                  transition={{ type: 'tween', ease: 'easeInOut', duration: 0.6 }}
+                  className="opacity-90 cursor-pointer pointer-events-auto filter drop-shadow-[0_4px_6px_rgba(0,0,0,0.8)]"
+                  onClick={triggerCableWobble}
+                />
+                <path d="M 150,30 C 180,185 420,185 450,30" fill="transparent" stroke="#fbcfe8" strokeWidth="1.5" strokeLinecap="round" className="opacity-50 pointer-events-none" />
+
+                {/* Cable 3: Emerald (Gate In -> Aux Out) Jack 3 -> Jack 5 */}
+                <motion.path 
+                  key={`cable-green-${cableShakeKey}`}
+                  d="M 350,30 C 380,140 520,140 550,30"
+                  fill="transparent"
+                  stroke="#10b981"
+                  strokeWidth="6"
+                  strokeLinecap="round"
+                  initial={{ d: "M 350,30 C 380,140 520,140 550,30" }}
+                  animate={{ 
+                    d: [
+                      "M 350,30 C 390,165 510,165 550,30",
+                      "M 350,30 C 370,120 530,120 550,30",
+                      "M 350,30 C 385,148 515,148 550,30",
+                      "M 350,30 C 380,140 520,140 550,30"
+                    ]
+                  }}
+                  transition={{ type: 'tween', ease: 'easeInOut', duration: 0.4 }}
+                  className="opacity-90 cursor-pointer pointer-events-auto filter drop-shadow-[0_4px_6px_rgba(0,0,0,0.8)]"
+                  onClick={triggerCableWobble}
+                />
+                <path d="M 350,30 C 380,140 520,140 550,30" fill="transparent" stroke="#a7f3d0" strokeWidth="1.5" strokeLinecap="round" className="opacity-50 pointer-events-none" />
+
+                {/* Metallic Chrome 1/4" Phone Jack Plug Barrels over plugged sockets */}
+                {[50, 150, 250, 350, 450, 550].map((x, idx) => (
+                  <g key={idx} transform={`translate(${x - 6}, 16)`}>
+                    {/* Metal Plug Body Barrel */}
+                    <rect x="1" y="0" width="10" height="20" rx="2" fill="url(#chromeGradient)" stroke="#27272a" strokeWidth="0.5" />
+                    {/* Strain Relief Ribs */}
+                    <line x1="2" y1="5" x2="10" y2="5" stroke="#18181b" strokeWidth="1" />
+                    <line x1="2" y1="8" x2="10" y2="8" stroke="#18181b" strokeWidth="1" />
+                    <line x1="2" y1="11" x2="10" y2="11" stroke="#18181b" strokeWidth="1" />
+                    {/* Cable exit collar */}
+                    <circle cx="6" cy="20" r="3" fill="#09090b" />
+                  </g>
+                ))}
+
+              </svg>
+
+              {/* Hardware Hex-Nut Sockets Panel (Matched with Reference Screenshot 2) */}
+              <div className="w-full flex justify-around px-2 z-10 relative">
+                {[
+                  { label: "CV In 1", group: "CV Input", color: "border-yellow-500" },
+                  { label: "CV In 2", group: "CV Input", color: "border-pink-500" },
+                  { label: "LFO Out", group: "CV Output", color: "border-yellow-500" },
+                  { label: "Gate In", group: "External FX", color: "border-emerald-500" },
+                  { label: "Sync Out", group: "External FX", color: "border-pink-500" },
+                  { label: "Aux Out", group: "External FX", color: "border-emerald-500" }
+                ].map((jack, idx) => (
+                  <div key={idx} className="flex flex-col items-center gap-1.5">
+                    <span className="text-[7px] font-mono font-bold text-zinc-400 uppercase tracking-tight">{jack.group}</span>
+                    
+                    {/* Photorealistic Metallic 6-Sided Hex Nut Base */}
+                    <div 
+                      onClick={triggerCableWobble}
+                      className="relative w-10 h-10 flex items-center justify-center cursor-pointer group"
+                    >
+                      {/* Hex Nut Outer Metal Shell */}
+                      <div className="absolute inset-0 bg-gradient-to-b from-zinc-300 via-zinc-500 to-zinc-700 rounded-lg shadow-[0_2px_4px_rgba(0,0,0,0.8)] border border-zinc-400 flex items-center justify-center p-0.5">
+                        <div className="w-full h-full bg-zinc-900 rounded-full border-2 border-zinc-950 flex items-center justify-center shadow-inner">
+                          {/* Inner Dark Jack Hole */}
+                          <div className={`w-4 h-4 rounded-full bg-black border-2 ${jack.color} flex items-center justify-center`}>
+                            <div className="w-2 h-2 rounded-full bg-zinc-950 border border-zinc-700" />
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <span className="text-[8px] font-mono text-zinc-300 font-bold uppercase">{jack.label}</span>
+                  </div>
+                ))}
+              </div>
+
+            </div>
+
+            {/* Back Chassis Lower Spec Bar */}
+            <div className="border-t border-zinc-800/80 pt-2 flex items-center justify-between text-[8px] font-mono text-zinc-500 px-2 z-20">
+              <span>MODEL: KUD-THINK-X900</span>
+              <span className="text-amber-400 font-bold tracking-wider">CAUTION: HIGH VOLTAGE / DISCONNECT BEFORE SERVICING</span>
+              <span>ENGINEERED FOR DECENTRALIZED COMPUTE</span>
+            </div>
+
+          </div>
         </div>
 
       </motion.div>

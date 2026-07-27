@@ -32,18 +32,9 @@ import {
   Trash2,
   HelpCircle,
 } from 'lucide-react';
-import { Bead, Agent, Convoy, Status, Priority } from '../types';
-
-interface KudbeeMessage {
-  id: string;
-  sender: 'user' | 'kudbee' | 'system' | 'agent-worker';
-  text: string;
-  timestamp: string;
-  model?: string;
-  extraData?: any;
-  status?: 'sending' | 'success' | 'error' | 'working';
-  rawResponse?: any;
-}
+import { Bead, Agent, Convoy, Status, Priority, KudbeeMessage } from '../types';
+import { VirtualizedLogViewer } from './kilo/VirtualizedLogViewer';
+import { VirtualizedMessageList } from './kilo/VirtualizedMessageList';
 
 interface KudbeeTerminalProps {
   isOpen: boolean;
@@ -72,11 +63,31 @@ export const KudbeeTerminal: React.FC<KudbeeTerminalProps> = ({
   setActiveModel,
   onMintThinkTokens,
 }) => {
+  // Active terminal sub-view tab: 'cli' | 'workers' | 'queue' | 'pr'
+  const [activeTab, setActiveTab] = useState<'cli' | 'workers' | 'queue' | 'pr'>('cli');
+
   const [isExpanded, setIsExpanded] = useState(false);
   const [localModel, setLocalModel] = useState('gemini-2.5-pro');
   const selectedModel = activeModel || localModel;
   const setSelectedModel = setActiveModel || setLocalModel;
-  
+
+  const [containerHeight, setContainerHeight] = useState(300);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (containerRef.current) {
+      const observer = new ResizeObserver((entries) => {
+        for (let entry of entries) {
+          if (entry.contentRect.height > 0) {
+            setContainerHeight(entry.contentRect.height);
+          }
+        }
+      });
+      observer.observe(containerRef.current);
+      return () => observer.disconnect();
+    }
+  }, [activeTab]);
+
   const [proxyUrl, setProxyUrl] = useState('http://127.0.0.1:8080');
   const [showSettings, setShowSettings] = useState(false);
   const [showRawJson, setShowRawJson] = useState<string | null>(null);
@@ -86,9 +97,6 @@ export const KudbeeTerminal: React.FC<KudbeeTerminalProps> = ({
   const [isRecording, setIsRecording] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [extraDataState, setExtraDataState] = useState<any>(null);
-
-  // Active terminal sub-view tab: 'cli' | 'workers' | 'queue' | 'pr'
-  const [activeTab, setActiveTab] = useState<'cli' | 'workers' | 'queue' | 'pr'>('cli');
 
   const [pollingMode, setPollingMode] = useState<'standby' | 'active_polling' | 'local_only'>('standby');
 
@@ -192,7 +200,7 @@ export const KudbeeTerminal: React.FC<KudbeeTerminalProps> = ({
     }
 
     addConsoleMessage(`🚀 Dispatching Kudbee Cloud Agent **@${agentName}** to resolve Bead **${targetBead.id}**: "${targetBead.title}"`, 'system');
-    onUpdateBeadStatus(targetBead.id, 'in-progress');
+    onUpdateBeadStatus(targetBead.id, 'in_progress');
     onUpdateBeadAssignee(targetBead.id, agentName);
 
     // Update worker status in list
@@ -273,7 +281,7 @@ export const KudbeeTerminal: React.FC<KudbeeTerminalProps> = ({
       {
         msg: `[${agentName}] CI is Green! Marking PR #${prNum} as 'Ready for Review'.`,
         action: () => {
-          onUpdateBeadStatus(targetBead.id, 'in-review');
+          onUpdateBeadStatus(targetBead.id, 'in_review');
         }
       },
       {
@@ -726,75 +734,11 @@ ${data.text}`, 'system');
         
         {/* VIEW 1: CLI Terminal */}
         {activeTab === 'cli' && (
-          <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar">
-            {messages.map((msg) => (
-              <div key={msg.id} className="flex flex-col gap-1.5">
-                <div className="flex items-center justify-between text-[10px] text-zinc-500">
-                  <div className="flex items-center gap-2">
-                    {msg.sender === 'user' ? (
-                      <span className="text-yellow-400 font-bold flex items-center gap-1">
-                        &gt;_ OPERATOR
-                      </span>
-                    ) : msg.sender === 'kudbee' ? (
-                      <span className="text-emerald-400 font-bold flex items-center gap-1">
-                        <Sparkles className="w-3 h-3 text-emerald-400" /> KUDBEE ROUTER ({msg.model || selectedModel})
-                      </span>
-                    ) : msg.sender === 'agent-worker' ? (
-                      <span className="text-purple-400 font-bold flex items-center gap-1">
-                        <Cpu className="w-3 h-3" /> AGENT WORKER THREAD
-                      </span>
-                    ) : (
-                      <span className="text-blue-400 font-bold flex items-center gap-1">
-                        <Radio className="w-3 h-3 text-blue-400" /> SYSTEM
-                      </span>
-                    )}
-                    <span>{msg.timestamp}</span>
-                  </div>
-
-                  {msg.sender === 'kudbee' && msg.text && (
-                    <button
-                      onClick={() => handleCopyText(msg.text, msg.id)}
-                      className="hover:text-zinc-300 text-zinc-500 flex items-center gap-1 transition-colors"
-                      title="Copy Text"
-                    >
-                      {copiedId === msg.id ? (
-                        <Check className="w-3 h-3 text-green-400" />
-                      ) : (
-                        <Copy className="w-3 h-3" />
-                      )}
-                    </button>
-                  )}
-                </div>
-
-                <div
-                  className={`p-3 rounded-lg border leading-relaxed text-xs ${
-                    msg.sender === 'user'
-                      ? 'bg-[#121822] border-yellow-500/30 text-zinc-100 font-medium'
-                      : msg.sender === 'kudbee'
-                      ? 'bg-[#0f151f] border-zinc-800 text-zinc-200'
-                      : msg.sender === 'agent-worker'
-                      ? 'bg-purple-950/10 border-purple-900/30 text-purple-200'
-                      : 'bg-zinc-900/60 border-zinc-800/60 text-zinc-300'
-                  }`}
-                >
-                  {msg.status === 'sending' ? (
-                    <div className="flex flex-col gap-2 p-2 bg-yellow-500/5 rounded-lg border border-yellow-500/15 max-w-sm animate-pulse">
-                      <div className="flex items-center gap-3 text-yellow-400 font-bold font-mono">
-                        <span className="inline-block animate-[spin_1.2s_linear_infinite] origin-center text-sm font-black bg-yellow-400/20 text-yellow-400 border border-yellow-400/40 rounded px-2 py-0.5 shadow-[0_0_8px_rgba(234,179,8,0.3)]">K</span>
-                        <span className="tracking-wide">KUDBEE thinking...</span>
-                      </div>
-                      <div className="text-[10px] text-zinc-500 font-mono flex flex-col gap-0.5 pl-8">
-                        <span>⚡ Allocating Think-Tokens for semantic weight...</span>
-                        <span>🔍 Recalling MemoryVault context vectors...</span>
-                      </div>
-                    </div>
-                  ) : (
-                    <p className="whitespace-pre-wrap select-text">{msg.text}</p>
-                  )}
-                </div>
-              </div>
-            ))}
-            <div ref={messagesEndRef} />
+          <div ref={containerRef} className="flex-1 overflow-hidden bg-[#090d12]">
+            <VirtualizedMessageList 
+              messages={messages} 
+              height={containerHeight} 
+            />
           </div>
         )}
 
@@ -1112,14 +1056,10 @@ ${data.text}`, 'system');
                     </div>
 
                     {/* CI Logs scrollbox */}
-                    <div className="bg-black/40 border border-zinc-850 p-3 rounded-lg font-mono text-[10px] text-zinc-400 space-y-1.5 h-44 overflow-y-auto leading-relaxed select-text">
-                      {runningJob.log.map((logLine, idx) => (
-                        <div key={idx} className="flex gap-2 items-start hover:bg-zinc-900/30 px-1 py-0.5 rounded transition-colors">
-                          <span className="text-zinc-600 select-none">&gt;</span>
-                          <span className="leading-normal">{logLine}</span>
-                        </div>
-                      ))}
-                    </div>
+                    <VirtualizedLogViewer 
+                      logs={runningJob.log} 
+                      height={176} // 44 * 4 or roughly h-44 (11rem = 176px)
+                    />
                   </div>
                 </div>
               </div>
