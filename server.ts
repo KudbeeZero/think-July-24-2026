@@ -1,5 +1,6 @@
 import { WebSocketServer } from 'ws';
 import { kiloBridgeMiddleware, getCachedTokenTransactions } from "./src/middleware/kiloBridge.ts";
+import { routeLLMRequest } from "./services/lib/llmRouter.ts";
 import {
   loadReconciledState,
   saveReconciledState,
