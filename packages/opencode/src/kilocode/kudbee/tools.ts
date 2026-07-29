@@ -2,10 +2,11 @@ import { getRelevantThinkTokens } from '../../../../../services/memory/vectorSto
 
 export async function kudbee_recall_memories(query: string) {
   try {
-    const relevantTokens = await getRelevantThinkTokens(query);
-    return { memories: relevantTokens };
+    const memories = await getRelevantThinkTokens(query);
+    return memories;
   } catch (error) {
     console.error('Error recalling memories:', error);
-    return { memories: [] };
+    return [];
   }
 }
+
