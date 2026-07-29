@@ -256,7 +256,12 @@ async function startServer() {
       await new Promise(resolve => setTimeout(resolve, delay));
     }
 
-    // Tier 1: Check for Direct xAI API Key
+    const result = await routeLLMRequest(message, model, systemPrompt, proxy, extra_data);
+    if (result.status === "success") {
+      return res.json(result);
+    }
+    return res.status(500).json({ error: "All tiers failed" });
+
     const xaiKey = process.env.XAI_API_KEY || process.env.GROK_API_KEY || process.env.XAI_KEY;
     if (xaiKey) {
       try {
