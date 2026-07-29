@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { useLocalStorage } from './hooks/useLocalStorage';
 import { useKilo } from './context/KiloContext';
 import {
   PanelLeft,
@@ -35,30 +34,33 @@ import {
   Brain,
   Coins,
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'motion/react';
 import { INITIAL_BEADS, INITIAL_AGENTS, INITIAL_CONVOYS, INITIAL_MAIL_ITEMS } from './data';
 import { Bead, Agent, Convoy, Status, Priority, MailItem } from './types';
 import { NewBeadModal } from './components/NewBeadModal';
 import { BeadDetailModal } from './components/BeadDetailModal';
 import { AgentDetailModal } from './components/AgentDetailModal';
 import { ConvoyDetailModal } from './components/ConvoyDetailModal';
-import { ObservabilityView } from './components/ObservabilityView';
-import { MergeQueueView } from './components/MergeQueueView';
-import { MailView } from './components/MailView';
-import { SettingsView } from './components/SettingsView';
-import { AgentsView } from './components/AgentsView';
 import { NewRigModal } from './components/NewRigModal';
 import { KudbeeTerminal } from './components/KudbeeTerminal';
 import { ThinkTokenMeter } from './components/ThinkTokenMeter';
 import { SpinUpAgentModal } from './components/SpinUpAgentModal';
-import { OverviewView } from './components/OverviewView';
-import { BeadsView } from './components/BeadsView';
-import { McpView } from './components/McpView';
-import { SystemTrackerView } from './components/SystemTrackerView';
-import { KiloTerminalView } from './components/KiloTerminalView';
-import { ThinkTokenVault } from './components/ThinkTokenVault';
-import { SolanaTokenomicsView } from './components/SolanaTokenomicsView';
 import { RackMountWrapper } from './components/kilo/RackMountWrapper';
 import { GeminiChatDrawer } from './components/GeminiChatDrawer';
+
+// Lazy load view components
+const ObservabilityView = React.lazy(() => import('./components/ObservabilityView').then(m => ({ default: m.ObservabilityView })));
+const MergeQueueView = React.lazy(() => import('./components/MergeQueueView').then(m => ({ default: m.MergeQueueView })));
+const MailView = React.lazy(() => import('./components/MailView').then(m => ({ default: m.MailView })));
+const SettingsView = React.lazy(() => import('./components/SettingsView').then(m => ({ default: m.SettingsView })));
+const AgentsView = React.lazy(() => import('./components/AgentsView').then(m => ({ default: m.AgentsView })));
+const OverviewView = React.lazy(() => import('./components/OverviewView').then(m => ({ default: m.OverviewView })));
+const BeadsView = React.lazy(() => import('./components/BeadsView').then(m => ({ default: m.BeadsView })));
+const McpView = React.lazy(() => import('./components/McpView').then(m => ({ default: m.McpView })));
+const SystemTrackerView = React.lazy(() => import('./components/SystemTrackerView').then(m => ({ default: m.SystemTrackerView })));
+const KiloTerminalView = React.lazy(() => import('./components/KiloTerminalView').then(m => ({ default: m.KiloTerminalView })));
+const ThinkTokenVault = React.lazy(() => import('./components/ThinkTokenVault').then(m => ({ default: m.ThinkTokenVault })));
+const SolanaTokenomicsView = React.lazy(() => import('./components/SolanaTokenomicsView').then(m => ({ default: m.SolanaTokenomicsView })));
 
 export default function App() {
   const {
@@ -78,6 +80,7 @@ export default function App() {
     isNewRigOpen,
     selectedBead,
     selectedAgent,
+    topologyNodes,
     selectedConvoy,
     setSelectedConvoy,
     isSidebarOpen,
@@ -450,7 +453,7 @@ export default function App() {
           <div className="px-3 mb-2 flex items-center justify-between">
             <span className="text-[10px] font-bold text-zinc-500 tracking-wider uppercase">System Topology</span>
             <span className="text-[9px] font-mono text-emerald-400 font-bold flex items-center gap-1">
-              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" /> 5 SWARM NODES
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-ping" /> 6 SWARM NODES
             </span>
           </div>
           <div className="px-3 flex justify-center">
@@ -485,42 +488,99 @@ export default function App() {
 
               <line x1="50%" y1="75%" x2="80%" y2="40%" stroke="#1f2937" strokeWidth="2" />
               <line x1="50%" y1="75%" x2="80%" y2="40%" stroke="#fbbf24" strokeWidth="2" className="flow-line" style={{ animationDelay: '1.6s' }} />
+
+              <line x1="50%" y1="75%" x2="60%" y2="15%" stroke="#1f2937" strokeWidth="2" />
+              <line x1="50%" y1="75%" x2="60%" y2="15%" stroke="#76b900" strokeWidth="2" className="flow-line" style={{ animationDelay: '2.0s' }} />
             </svg>
             
             {/* Mayor Node */}
-            <div className="absolute bottom-[8%] w-16 h-16 rounded-full bg-[#e5ff55] flex flex-col items-center justify-center shadow-[0_0_20px_rgba(229,255,85,0.4)] z-10 border-4 border-[#080c11] relative group cursor-pointer transition-transform hover:scale-110">
-              <span className="text-[9px] font-extrabold text-zinc-950">MAYOR</span>
-              <span className="text-[7px] font-bold text-zinc-800">100% HEALTH</span>
-              <span className="absolute top-1 right-1 w-2 h-2 bg-emerald-500 rounded-full animate-ping" />
-            </div>
+            <motion.div 
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{
+                scale: topologyNodes?.find(n => n.id === 'mayor')?.status === 'error' ? 0.95 : 1,
+                opacity: topologyNodes?.find(n => n.id === 'mayor')?.status === 'error' ? 0.7 : 1
+              }}
+              transition={{ duration: 0.3 }}
+              className="absolute bottom-[8%] w-16 h-16 rounded-full bg-[#e5ff55] flex flex-col items-center justify-center shadow-[0_0_20px_rgba(229,255,85,0.4)] z-10 border-4 border-[#080c11] relative group cursor-pointer hover:scale-110">
+              <span className="text-[9px] font-extrabold text-zinc-950">{topologyNodes?.find(n => n.id === 'mayor')?.name || 'MAYOR'}</span>
+              <span className="text-[7px] font-bold text-zinc-800">{topologyNodes?.find(n => n.id === 'mayor')?.health || 100}% HEALTH</span>
+              <span className={`absolute top-1 right-1 w-2 h-2 rounded-full ${topologyNodes?.find(n => n.id === 'mayor')?.status === 'error' ? 'bg-red-500' : 'bg-emerald-500 animate-ping'}`} />
+            </motion.div>
             
             {/* Worker Nodes */}
-            <div className="absolute top-[32%] left-[8%] w-8 h-8 rounded-full bg-zinc-900 border-2 border-emerald-500/80 flex flex-col items-center justify-center z-10 relative shadow-[0_0_10px_rgba(16,185,129,0.3)] group cursor-pointer hover:scale-110 transition-transform">
-              <span className="text-[7px] text-zinc-200 font-bold">Toast</span>
-              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-[#080c11]" />
-            </div>
+            <motion.div 
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{
+                scale: topologyNodes?.find(n => n.id === 'toast')?.status === 'error' ? 0.95 : 1,
+                opacity: topologyNodes?.find(n => n.id === 'toast')?.status === 'error' ? 0.7 : 1
+              }}
+              transition={{ duration: 0.3, delay: 0.1 }}
+              className="absolute top-[32%] left-[8%] w-8 h-8 rounded-full bg-zinc-900 border-2 border-emerald-500/80 flex flex-col items-center justify-center z-10 relative shadow-[0_0_10px_rgba(16,185,129,0.3)] group cursor-pointer hover:scale-110">
+              <span className="text-[7px] text-zinc-200 font-bold">{topologyNodes?.find(n => n.id === 'toast')?.name || 'Toast'}</span>
+              <span className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#080c11] ${topologyNodes?.find(n => n.id === 'toast')?.status === 'error' ? 'bg-red-500 animate-pulse' : topologyNodes?.find(n => n.id === 'toast')?.status === 'working' ? 'bg-emerald-400 animate-ping' : 'bg-emerald-500'}`} />
+            </motion.div>
 
-            <div className="absolute top-[20%] left-[26%] w-8 h-8 rounded-full bg-zinc-900 border-2 border-emerald-500/80 flex flex-col items-center justify-center z-10 relative shadow-[0_0_10px_rgba(16,185,129,0.3)] group cursor-pointer hover:scale-110 transition-transform">
-              <span className="text-[7px] text-zinc-200 font-bold">Maple</span>
-              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-emerald-500 border-2 border-[#080c11]" />
-            </div>
+            <motion.div 
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{
+                scale: topologyNodes?.find(n => n.id === 'maple')?.status === 'error' ? 0.95 : 1,
+                opacity: topologyNodes?.find(n => n.id === 'maple')?.status === 'error' ? 0.7 : 1
+              }}
+              transition={{ duration: 0.3, delay: 0.15 }}
+              className="absolute top-[20%] left-[26%] w-8 h-8 rounded-full bg-zinc-900 border-2 border-emerald-500/80 flex flex-col items-center justify-center z-10 relative shadow-[0_0_10px_rgba(16,185,129,0.3)] group cursor-pointer hover:scale-110">
+              <span className="text-[7px] text-zinc-200 font-bold">{topologyNodes?.find(n => n.id === 'maple')?.name || 'Maple'}</span>
+              <span className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#080c11] ${topologyNodes?.find(n => n.id === 'maple')?.status === 'error' ? 'bg-red-500 animate-pulse' : topologyNodes?.find(n => n.id === 'maple')?.status === 'working' ? 'bg-emerald-400 animate-ping' : 'bg-emerald-500'}`} />
+            </motion.div>
 
-            <div className="absolute top-[14%] left-[50%] -translate-x-1/2 w-9 h-9 rounded-full bg-zinc-900 border-2 border-yellow-400 flex flex-col items-center justify-center z-10 shadow-[0_0_15px_rgba(250,204,21,0.4)] relative group cursor-pointer hover:scale-110 transition-transform">
-              <span className="text-[7px] text-yellow-300 font-extrabold">Alpha</span>
-              <span className="text-[5px] text-yellow-400/80 font-bold">LOCAL</span>
-              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-yellow-400 border-2 border-[#080c11] animate-pulse" />
-            </div>
+            <motion.div 
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{
+                scale: topologyNodes?.find(n => n.id === 'alpha')?.status === 'error' ? 0.95 : 1,
+                opacity: topologyNodes?.find(n => n.id === 'alpha')?.status === 'error' ? 0.7 : 1
+              }}
+              transition={{ duration: 0.3, delay: 0.2 }}
+              className="absolute top-[14%] left-[50%] -translate-x-1/2 w-9 h-9 rounded-full bg-zinc-900 border-2 border-yellow-400 flex flex-col items-center justify-center z-10 shadow-[0_0_15px_rgba(250,204,21,0.4)] relative group cursor-pointer hover:scale-110">
+              <span className="text-[7px] text-yellow-300 font-extrabold">{topologyNodes?.find(n => n.id === 'alpha')?.name || 'Alpha'}</span>
+              <span className="text-[5px] text-yellow-400/80 font-bold">{topologyNodes?.find(n => n.id === 'alpha')?.health || 100}%</span>
+              <span className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#080c11] ${topologyNodes?.find(n => n.id === 'alpha')?.status === 'error' ? 'bg-red-500 animate-pulse' : topologyNodes?.find(n => n.id === 'alpha')?.status === 'working' ? 'bg-yellow-400 animate-ping' : 'bg-yellow-500'}`} />
+            </motion.div>
 
-            <div className="absolute top-[20%] right-[26%] w-8 h-8 rounded-full bg-zinc-900 border-2 border-cyan-500/80 flex flex-col items-center justify-center z-10 relative shadow-[0_0_10px_rgba(6,182,212,0.3)] group cursor-pointer hover:scale-110 transition-transform">
-              <span className="text-[7px] text-cyan-300 font-bold">refinery</span>
-              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-cyan-400 border-2 border-[#080c11]" />
-            </div>
+            <motion.div 
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{
+                scale: topologyNodes?.find(n => n.id === 'refinery')?.status === 'error' ? 0.95 : 1,
+                opacity: topologyNodes?.find(n => n.id === 'refinery')?.status === 'error' ? 0.7 : 1
+              }}
+              transition={{ duration: 0.3, delay: 0.25 }}
+              className="absolute top-[20%] right-[26%] w-8 h-8 rounded-full bg-zinc-900 border-2 border-cyan-500/80 flex flex-col items-center justify-center z-10 relative shadow-[0_0_10px_rgba(6,182,212,0.3)] group cursor-pointer hover:scale-110">
+              <span className="text-[7px] text-cyan-300 font-bold">{topologyNodes?.find(n => n.id === 'refinery')?.name || 'refinery'}</span>
+              <span className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#080c11] ${topologyNodes?.find(n => n.id === 'refinery')?.status === 'error' ? 'bg-red-500 animate-pulse' : topologyNodes?.find(n => n.id === 'refinery')?.status === 'working' ? 'bg-cyan-400 animate-ping' : 'bg-cyan-500'}`} />
+            </motion.div>
 
-            <div className="absolute top-[32%] right-[8%] w-9 h-9 rounded-full bg-zinc-900 border-2 border-purple-500/80 flex flex-col items-center justify-center z-10 relative shadow-[0_0_10px_rgba(168,85,247,0.3)] group cursor-pointer hover:scale-110 transition-transform">
-              <span className="text-[7px] text-purple-300 font-bold">GitHub</span>
-              <span className="text-[5px] text-purple-400/80 font-bold">SYNC</span>
-              <span className="absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-purple-400 border-2 border-[#080c11] animate-ping" />
-            </div>
+            <motion.div 
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{
+                scale: topologyNodes?.find(n => n.id === 'github')?.status === 'error' ? 0.95 : 1,
+                opacity: topologyNodes?.find(n => n.id === 'github')?.status === 'error' ? 0.7 : 1
+              }}
+              transition={{ duration: 0.3, delay: 0.3 }}
+              className="absolute top-[32%] right-[8%] w-9 h-9 rounded-full bg-zinc-900 border-2 border-purple-500/80 flex flex-col items-center justify-center z-10 relative shadow-[0_0_10px_rgba(168,85,247,0.3)] group cursor-pointer hover:scale-110">
+              <span className="text-[7px] text-purple-300 font-bold">{topologyNodes?.find(n => n.id === 'github')?.name || 'GitHub'}</span>
+              <span className="text-[5px] text-purple-400/80 font-bold">{topologyNodes?.find(n => n.id === 'github')?.health || 100}%</span>
+              <span className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#080c11] ${topologyNodes?.find(n => n.id === 'github')?.status === 'error' ? 'bg-red-500 animate-pulse' : topologyNodes?.find(n => n.id === 'github')?.status === 'working' ? 'bg-purple-400 animate-ping' : 'bg-purple-500'}`} />
+            </motion.div>
+
+            <motion.div 
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{
+                scale: topologyNodes?.find(n => n.id === 'ising')?.status === 'error' ? 0.95 : 1,
+                opacity: topologyNodes?.find(n => n.id === 'ising')?.status === 'error' ? 0.7 : 1
+              }}
+              transition={{ duration: 0.3, delay: 0.35 }}
+              className="absolute top-[10%] right-[40%] w-8 h-8 rounded-full bg-zinc-900 border-2 border-[#76b900]/80 flex flex-col items-center justify-center z-10 relative shadow-[0_0_10px_rgba(118,185,0,0.3)] group cursor-pointer hover:scale-110">
+              <span className="text-[7px] text-[#76b900] font-bold">{topologyNodes?.find(n => n.id === 'ising')?.name || 'Ising'}</span>
+              <span className={`absolute -top-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-[#080c11] ${topologyNodes?.find(n => n.id === 'ising')?.status === 'error' ? 'bg-red-500 animate-pulse' : topologyNodes?.find(n => n.id === 'ising')?.status === 'working' ? 'bg-[#76b900] animate-ping' : 'bg-[#76b900]'}`} />
+            </motion.div>
           </div>
           </div>
           </div> {/* Closing System Topology Section */}
@@ -709,95 +769,119 @@ export default function App() {
         {activeNav === 'solana-tokenomics' ? (
           <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
             <RackMountWrapper title="Solana & Whitepaper">
-              <SolanaTokenomicsView />
+              <React.Suspense fallback={<div className="p-4 text-zinc-400">Loading...</div>}>
+                <SolanaTokenomicsView />
+              </React.Suspense>
             </RackMountWrapper>
           </div>
         ) : activeNav === 'think-token-vault' ? (
           <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
             <RackMountWrapper title="Think Token Vault">
-              <ThinkTokenVault />
+              <React.Suspense fallback={<div className="p-4 text-zinc-400">Loading...</div>}>
+                <ThinkTokenVault />
+              </React.Suspense>
             </RackMountWrapper>
           </div>
         ) : activeNav === 'kilo-terminal' ? (
           <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
             <RackMountWrapper title="Kudbee Console">
-              <KiloTerminalView totalReasoningTokens={totalReasoningTokens} setTotalReasoningTokens={setTotalReasoningTokens} />
+              <React.Suspense fallback={<div className="p-4 text-zinc-400">Loading...</div>}>
+                <KiloTerminalView totalReasoningTokens={totalReasoningTokens} setTotalReasoningTokens={setTotalReasoningTokens} />
+              </React.Suspense>
             </RackMountWrapper>
           </div>
         ) : activeNav === 'tracker' ? (
           <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
             <RackMountWrapper title="System Tracker">
-              <SystemTrackerView />
+              <React.Suspense fallback={<div className="p-4 text-zinc-400">Loading...</div>}>
+                <SystemTrackerView />
+              </React.Suspense>
             </RackMountWrapper>
           </div>
         ) : activeNav === 'observability' ? (
           <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
             <RackMountWrapper title="Observability">
-              <ObservabilityView liveFeed={liveFeed} />
+              <React.Suspense fallback={<div className="p-4 text-zinc-400">Loading...</div>}>
+                <ObservabilityView liveFeed={liveFeed} />
+              </React.Suspense>
             </RackMountWrapper>
           </div>
         ) : activeNav === 'mcp' ? (
           <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
             <RackMountWrapper title="MCP & Heroku Check">
-              <McpView />
+              <React.Suspense fallback={<div className="p-4 text-zinc-400">Loading...</div>}>
+                <McpView />
+              </React.Suspense>
             </RackMountWrapper>
           </div>
         ) : activeNav === 'merge_queue' ? (
           <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
             <RackMountWrapper title="Merge Queue">
-              <MergeQueueView />
+              <React.Suspense fallback={<div className="p-4 text-zinc-400">Loading...</div>}>
+                <MergeQueueView />
+              </React.Suspense>
             </RackMountWrapper>
           </div>
         ) : activeNav === 'mail' ? (
           <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
             <RackMountWrapper title="Mail">
-              <MailView 
-                mailItems={mailItems} 
-                onMarkAsRead={handleMarkMailAsRead} 
-                onMarkAllAsRead={handleMarkAllMailAsRead}
-                onSimulateAlert={simulateIncomingAlert}
-              />
+              <React.Suspense fallback={<div className="p-4 text-zinc-400">Loading...</div>}>
+                <MailView 
+                  mailItems={mailItems} 
+                  onMarkAsRead={handleMarkMailAsRead} 
+                  onMarkAllAsRead={handleMarkAllMailAsRead}
+                  onSimulateAlert={simulateIncomingAlert}
+                />
+              </React.Suspense>
             </RackMountWrapper>
           </div>
         ) : activeNav === 'settings' ? (
           <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
             <RackMountWrapper title="Settings">
-              <SettingsView />
+              <React.Suspense fallback={<div className="p-4 text-zinc-400">Loading...</div>}>
+                <SettingsView />
+              </React.Suspense>
             </RackMountWrapper>
           </div>
         ) : activeNav === 'agents' ? (
           <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
             <RackMountWrapper title="Agents" showAgentStatus={true}>
-              <AgentsView
-                agents={agents}
-                onSelectAgent={(agent) => setSelectedAgent(agent)}
-                onToggleStatus={handleToggleAgentStatus}
-              />
+              <React.Suspense fallback={<div className="p-4 text-zinc-400">Loading...</div>}>
+                <AgentsView
+                  agents={agents}
+                  onSelectAgent={(agent) => setSelectedAgent(agent)}
+                  onToggleStatus={handleToggleAgentStatus}
+                />
+              </React.Suspense>
             </RackMountWrapper>
           </div>
         ) : activeNav === 'beads' ? (
           <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
             <RackMountWrapper title="Beads">
-              <BeadsView
-                beads={beads}
-                onSelectBead={(bead) => setSelectedBead(bead)}
-                onOpenNewBeadModal={() => setIsNewBeadOpen(true)}
-                onStatusChange={handleUpdateBeadStatus}
-              />
+              <React.Suspense fallback={<div className="p-4 text-zinc-400">Loading...</div>}>
+                <BeadsView
+                  beads={beads}
+                  onSelectBead={(bead) => setSelectedBead(bead)}
+                  onOpenNewBeadModal={() => setIsNewBeadOpen(true)}
+                  onStatusChange={handleUpdateBeadStatus}
+                />
+              </React.Suspense>
             </RackMountWrapper>
           </div>
         ) : (
           <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
             <RackMountWrapper title="Overview">
-              <OverviewView
-                agents={agents}
-                convoys={convoys}
-                liveFeed={liveFeed}
-                onOpenSpinUpModal={() => setIsSpinUpModalOpen(true)}
-                onOpenGrokTerminal={() => setIsGrokTerminalOpen(true)}
-                onSelectAgent={(agent) => setSelectedAgent(agent)}
-                onRunTestTask={handleRunTestTask}
-              />
+              <React.Suspense fallback={<div className="p-4 text-zinc-400">Loading...</div>}>
+                <OverviewView
+                  agents={agents}
+                  convoys={convoys}
+                  liveFeed={liveFeed}
+                  onOpenSpinUpModal={() => setIsSpinUpModalOpen(true)}
+                  onOpenGrokTerminal={() => setIsGrokTerminalOpen(true)}
+                  onSelectAgent={(agent) => setSelectedAgent(agent)}
+                  onRunTestTask={handleRunTestTask}
+                />
+              </React.Suspense>
             </RackMountWrapper>
           </div>
         )}

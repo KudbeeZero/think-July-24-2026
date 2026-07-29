@@ -1,3 +1,4 @@
+import { WebSocketServer } from 'ws';
 import { kiloBridgeMiddleware, getCachedTokenTransactions } from "./src/middleware/kiloBridge.ts";
 import {
   loadReconciledState,
@@ -152,6 +153,24 @@ async function startServer() {
   mcpServer.on('error', (err) => {
     console.error('Failed to start MCP Server:', err);
   });
+
+  const children = [grokServer, workerAlpha, githubSync, mcpServer];
+  const cleanup = () => {
+    console.log('Cleaning up child processes...');
+    children.forEach(child => {
+      if (child.pid) {
+        try {
+          process.kill(child.pid);
+        } catch (e) {
+          // Ignore
+        }
+      }
+    });
+  };
+
+  process.on('SIGINT', cleanup);
+  process.on('SIGTERM', cleanup);
+  process.on('exit', cleanup);
 
   // Think Token System State & Road Map Variables (Phase 1)
   let challengeModeActive = false;
@@ -1439,7 +1458,9 @@ async function startServer() {
   });
 
     const intervalId = setInterval(() => {
-      const data = {
+      const isIsingEvent = Math.random() > 0.8;
+      
+      let data: any = {
         timestamp: new Date().toISOString(),
         cpu: `${Math.floor(10 + Math.random() * 25)}%`,
         memory: `${Math.floor(200 + Math.random() * 150)}MB`,
@@ -1447,6 +1468,16 @@ async function startServer() {
         activeModel: "deepseek-reasoner",
         tokensPerSec: Math.floor(180 + Math.random() * 60)
       };
+
+      if (isIsingEvent) {
+        data = {
+          ...data,
+          source: 'Ising',
+          event: `Running agentic calibration on QPU diagnostic outputs using NVFP4-quantized NVIDIA Ising Calibration 1.5...`,
+          type: 'agent'
+        };
+      }
+
       res.write(`data: ${JSON.stringify(data)}\n\n`);
     }, 2000);
 
@@ -1561,8 +1592,32 @@ async function startServer() {
     console.log('[Grok Service] Deferred spawning Python wrapper:', err.message);
   }
 
-  app.listen(PORT, "0.0.0.0" as any, () => {
+  const server = app.listen(PORT, "0.0.0.0" as any, () => {
     console.log(`Server running on http://localhost:${PORT}`);
+  });
+
+  const wss = new WebSocketServer({ server, path: '/ws' });
+  
+  wss.on('connection', (ws) => {
+    console.log('[WebSocket] Client connected for topology updates');
+    
+    const interval = setInterval(() => {
+      const nodes = [
+        { id: 'mayor', name: 'MAYOR', status: 'online', health: 100 },
+        { id: 'toast', name: 'Toast', status: Math.random() > 0.8 ? 'working' : 'online', health: Math.floor(80 + Math.random() * 20) },
+        { id: 'maple', name: 'Maple', status: Math.random() > 0.9 ? 'error' : 'online', health: Math.floor(70 + Math.random() * 30) },
+        { id: 'alpha', name: 'Alpha', status: Math.random() > 0.5 ? 'working' : 'online', health: Math.floor(85 + Math.random() * 15) },
+        { id: 'refinery', name: 'refinery', status: 'online', health: Math.floor(90 + Math.random() * 10) },
+        { id: 'github', name: 'GitHub', status: 'working', health: 100 },
+        { id: 'ising', name: 'Ising', status: Math.random() > 0.6 ? 'working' : 'online', health: Math.floor(95 + Math.random() * 5) },
+      ];
+      ws.send(JSON.stringify({ type: 'TOPOLOGY_UPDATE', nodes }));
+    }, 2000);
+
+    ws.on('close', () => {
+      clearInterval(interval);
+      console.log('[WebSocket] Client disconnected');
+    });
   });
 }
 

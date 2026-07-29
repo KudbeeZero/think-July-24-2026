@@ -4,6 +4,7 @@ import { Agent, Bead } from '../types';
 import { useDrawerA11y } from '../hooks/useDrawerA11y';
 import { useKilo } from '../context/KiloContext';
 import { DigitalSpectrumAnalyzer } from './kilo/DigitalSpectrumAnalyzer';
+import { AgentActivityHistory } from './AgentActivityHistory';
 
 const AVAILABLE_SKILLS = [
   'Drizzle Schema Migration',
@@ -59,7 +60,7 @@ export function AgentDetailModal({ agent, onClose, onToggleStatus, onRunTestTask
     onClose,
   });
 
-  const { agents, setAgents, beads, liveFeed, handleUpdateBeadAssignee, handleUpdateBeadStatus } = useKilo();
+  const { agents, setAgents, beads, liveFeed, handleUpdateBeadAssignee, handleUpdateBeadStatus, agentHeartbeat } = useKilo();
   const [agentPrompt, setAgentPrompt] = React.useState('');
   const [isRunningTask, setIsRunningTask] = React.useState(false);
   const [taskOutput, setTaskOutput] = React.useState<string | null>(null);
@@ -70,7 +71,7 @@ export function AgentDetailModal({ agent, onClose, onToggleStatus, onRunTestTask
   const currentAgent = agents.find(a => a.id === agent.id) || agent;
 
   const isWorking = currentAgent.status === 'working';
-  const Icon = currentAgent.icon === 'shield' ? Shield : Bot;
+  const Icon = currentAgent.icon === 'shield' ? Shield : currentAgent.icon === 'cpu' ? Cpu : Bot;
 
   // Real-time telemetry attributes fetched directly from KiloContext telemetry layer
   const currentLatency = currentAgent.latency || 12;
@@ -292,6 +293,12 @@ export function AgentDetailModal({ agent, onClose, onToggleStatus, onRunTestTask
               status={currentStatus} 
             />
           </div>
+
+          <AgentActivityHistory 
+            agent={currentAgent} 
+            liveFeed={liveFeed} 
+            onTriggerHeartbeat={agentHeartbeat} 
+          />
 
           {/* Real-Time Telemetry Layer Node Health & Latency Dashboard */}
           <div className="bg-[#161b22] border border-zinc-800 rounded-xl p-4 space-y-4 shadow-sm">

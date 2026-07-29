@@ -2,6 +2,13 @@ export type Priority = 'low' | 'medium' | 'high';
 export type BeadType = 'issue' | 'feature' | 'bug' | 'merge_request';
 export type Status = 'open' | 'in_progress' | 'in_review' | 'closed';
 
+export interface TopologyNode {
+  id: string;
+  name: string;
+  status: 'online' | 'offline' | 'working' | 'error';
+  health: number;
+}
+
 export interface Bead {
   id: string;
   title: string;
@@ -42,7 +49,7 @@ export interface Agent {
   lastActive: string;
   lastSleepTime?: string;
   currentAction?: string;
-  icon?: 'robot' | 'shield';
+  icon?: 'robot' | 'shield' | 'cpu';
   model?: string;
   reasoningTokensSpent?: number;
   promptTokensSpent?: number;

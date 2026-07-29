@@ -42,9 +42,20 @@ aiRouter.post('/ask', kiloBridgeMiddleware, async (req, res) => {
       const result = `[Grok Response for: ${message}] - Analytical engine.`;
       return res.json({ result, model, tokensUsed: 120 });
     } else if (model.includes('gemini')) {
-      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-      // Call Gemini API...
-      return res.json({ result: "Gemini response", model, tokensUsed: 100 });
+      const apiKey = process.env.GEMINI_API_KEY;
+      if (!apiKey) {
+        return res.json({ result: "[Gemini Flash Lite] Simulated response (No GEMINI_API_KEY configured).", model, tokensUsed: 50 });
+      }
+      const ai = new GoogleGenAI({ apiKey });
+      const geminiRes = await ai.models.generateContent({
+        model: 'gemini-2.5-flash',
+        contents: message,
+        config: {
+          systemInstruction: "You are an ultra-fast, highly efficient AI assistant powered by Gemini 2.5 Flash (lowest latency/intelligent model tier)."
+        }
+      });
+      const result = geminiRes.text || "Gemini Flash response generated.";
+      return res.json({ result, model: 'gemini-2.5-flash', tokensUsed: 80 });
     } else {
       return res.status(400).json({ error: "Unsupported model" });
     }

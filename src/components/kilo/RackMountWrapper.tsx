@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { useSoundEffects } from '../../hooks/useSoundEffects';
-import { Sparkles, RefreshCw, Zap, Sliders, ChevronDown, ChevronUp } from 'lucide-react';
+import { Sparkles, RefreshCw, Zap, Sliders, ChevronDown, ChevronUp, Flame } from 'lucide-react';
 import { DigitalSpectrumAnalyzer } from './DigitalSpectrumAnalyzer';
 
 interface RackMountWrapperProps {
@@ -26,7 +26,33 @@ export function RackMountWrapper({ children, title, className = '', showAgentSta
   const [oscAmp, setOscAmp] = useState(50);
   const [graphTime, setGraphTime] = useState(0);
 
+  // Thermal Analysis Overlay States & Simulated Heat Load
+  const [showThermal, setShowThermal] = useState(false);
+  const [cpuLoadPreset, setCpuLoadPreset] = useState<number>(68); // 0 - 100%
+  const [thermalJitter, setThermalJitter] = useState<number>(0);
+
   const { playBeep, playHum, playTwist, playPlug, playFlip } = useSoundEffects();
+
+  useEffect(() => {
+    let animId: number;
+    let count = 0;
+    const loop = () => {
+      count++;
+      if (count % 12 === 0) {
+        setThermalJitter((Math.random() - 0.5) * 2.2);
+      }
+      animId = requestAnimationFrame(loop);
+    };
+    animId = requestAnimationFrame(loop);
+    return () => cancelAnimationFrame(animId);
+  }, []);
+
+  // Hotspot Temperatures based on simulated CPU load
+  const cpu0Temp = Number((32 + (cpuLoadPreset * 0.52) + thermalJitter).toFixed(1));
+  const vrmTemp = Number((38 + (cpuLoadPreset * 0.58) + (thermalJitter * 1.2)).toFixed(1));
+  const ramTemp = Number((28 + (cpuLoadPreset * 0.28) + (thermalJitter * 0.5)).toFixed(1));
+  const psuTemp = Number((35 + (cpuLoadPreset * 0.45) + (thermalJitter * 0.8)).toFixed(1));
+  const intakeTemp = Number((22 + (cpuLoadPreset * 0.08)).toFixed(1));
 
   const toggleConnection = (id: string) => {
     playPlug();
@@ -191,14 +217,206 @@ export function RackMountWrapper({ children, title, className = '', showAgentSta
               </div>
               <div className="flex items-center gap-2">
                 <button
+                  onClick={() => {
+                    playBeep(showThermal ? 300 : 700);
+                    setShowThermal(prev => !prev);
+                  }}
+                  className={`px-2.5 py-1 rounded border text-[9px] font-bold uppercase tracking-wider transition-all cursor-pointer flex items-center gap-1.5 ${
+                    showThermal
+                      ? 'bg-gradient-to-r from-red-600 to-amber-500 text-white border-amber-300 shadow-[0_0_12px_rgba(239,68,68,0.6)] font-black'
+                      : 'bg-zinc-900 border-zinc-700 text-zinc-400 hover:text-amber-400 hover:border-amber-500/50'
+                  }`}
+                >
+                  <Flame className={`w-3 h-3 ${showThermal ? 'animate-bounce text-yellow-200' : 'text-amber-500'}`} />
+                  <span>{showThermal ? 'THERMAL ON' : 'THERMAL'}</span>
+                </button>
+                <button
                   onClick={handleFlip}
-                  className="px-2 py-0.5 rounded bg-zinc-900 border border-zinc-700 text-[9px] font-bold text-zinc-500 uppercase tracking-wider hover:text-zinc-300 transition-colors"
+                  className="px-2 py-1 rounded bg-zinc-900 border border-zinc-700 text-[9px] font-bold text-zinc-500 uppercase tracking-wider hover:text-zinc-300 transition-colors cursor-pointer"
                 >
                   REAR
                 </button>
               </div>
             </div>
           )}
+
+          {/* Thermal Analysis FLIR Gradient Overlay */}
+          <AnimatePresence>
+            {showThermal && (
+              <motion.div
+                initial={{ opacity: 0, scale: 0.98 }}
+                animate={{ opacity: 1, scale: 1 }}
+                exit={{ opacity: 0, scale: 0.98 }}
+                className="relative my-3 p-3 bg-black/90 border-2 border-red-500/60 rounded-xl overflow-hidden shadow-[0_0_25px_rgba(239,68,68,0.35)] font-mono select-none z-30"
+              >
+                {/* Background FLIR Thermal Multi-radial Heatmap Gradients */}
+                <div 
+                  className="absolute inset-0 pointer-events-none opacity-85 transition-all duration-500"
+                  style={{
+                    background: `
+                      radial-gradient(circle at 25% 35%, rgba(255, 255, 255, ${Math.min(0.95, cpu0Temp / 85)}), rgba(239, 68, 68, ${Math.min(0.85, cpu0Temp / 70)}), rgba(245, 158, 11, 0.6), transparent 45%),
+                      radial-gradient(circle at 75% 25%, rgba(220, 38, 38, ${Math.min(0.95, vrmTemp / 80)}), rgba(234, 88, 12, 0.7), rgba(234, 179, 8, 0.4), transparent 40%),
+                      radial-gradient(circle at 50% 65%, rgba(234, 179, 8, ${Math.min(0.7, ramTemp / 60)}), rgba(34, 197, 94, 0.5), transparent 35%),
+                      radial-gradient(circle at 85% 75%, rgba(239, 68, 68, ${Math.min(0.8, psuTemp / 75)}), rgba(245, 158, 11, 0.5), transparent 40%),
+                      radial-gradient(circle at 12% 80%, rgba(59, 130, 246, 0.75), rgba(6, 182, 212, 0.4), transparent 35%),
+                      linear-gradient(135deg, rgba(15, 23, 42, 0.9) 0%, rgba(30, 27, 75, 0.8) 50%, rgba(67, 24, 255, 0.25) 100%)
+                    `
+                  }}
+                />
+
+                {/* Grid Scanlines & HUD overlay */}
+                <div className="absolute inset-0 bg-[linear-gradient(rgba(255,255,255,0.06)_1px,transparent_1px),linear-gradient(90deg,rgba(255,255,255,0.06)_1px,transparent_1px)] bg-[size:16px_16px] pointer-events-none opacity-40" />
+                <div className="absolute inset-0 bg-[linear-gradient(transparent_50%,rgba(0,0,0,0.4)_50%)] bg-[size:100%_4px] pointer-events-none opacity-30" />
+
+                {/* FLIR Header Controls */}
+                <div className="relative z-10 flex flex-wrap items-center justify-between gap-2 pb-2 border-b border-red-500/40 mb-3 text-[10px]">
+                  <div className="flex items-center gap-2">
+                    <Flame className="w-4 h-4 text-amber-400 animate-pulse" />
+                    <span className="font-black text-amber-300 tracking-wider uppercase">
+                      THERMAL ANALYSIS OVERLAY [FLIR OPTICS]
+                    </span>
+                    <span className="bg-red-950/90 border border-red-600/80 text-red-300 text-[8px] font-bold px-2 py-0.5 rounded shadow-sm">
+                      HEAT DISTRIBUTION
+                    </span>
+                  </div>
+
+                  {/* Load Preset Selector */}
+                  <div className="flex items-center gap-1.5 bg-black/80 border border-zinc-800 px-2 py-1 rounded-lg">
+                    <span className="text-[9px] text-zinc-400 font-bold uppercase mr-1">LOAD SIM:</span>
+                    {[
+                      { label: 'IDLE (20%)', load: 20 },
+                      { label: 'NOMINAL (55%)', load: 55 },
+                      { label: 'HIGH (85%)', load: 85 },
+                      { label: 'MAX (100%)', load: 100 }
+                    ].map(p => (
+                      <button
+                        key={p.load}
+                        onClick={() => {
+                          playBeep(400 + p.load * 3);
+                          setCpuLoadPreset(p.load);
+                        }}
+                        className={`text-[8px] font-bold px-1.5 py-0.5 rounded transition-all cursor-pointer ${
+                          cpuLoadPreset === p.load
+                            ? 'bg-amber-400 text-black font-black shadow-[0_0_6px_rgba(251,191,36,0.6)]'
+                            : 'bg-zinc-900 text-zinc-400 hover:text-zinc-200 border border-zinc-800'
+                        }`}
+                      >
+                        {p.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* Interactive Thermal HUD Target Reticles & Temperature Callouts */}
+                <div className="relative z-10 grid grid-cols-2 sm:grid-cols-4 gap-2 my-2">
+                  {/* Hotspot 1: CPU0 CORE */}
+                  <div className="bg-black/70 border border-red-500/60 rounded-lg p-2.5 backdrop-blur-sm relative overflow-hidden">
+                    <div className="flex items-center justify-between text-[8px] text-zinc-400 mb-1">
+                      <span className="font-bold uppercase text-amber-300 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-ping" />
+                        CPU0 CORE
+                      </span>
+                      <span className="text-zinc-500">ZONE 1</span>
+                    </div>
+                    <div className="flex items-baseline gap-1">
+                      <span className={`text-lg font-black font-mono ${cpu0Temp >= 80 ? 'text-red-400 animate-pulse' : cpu0Temp >= 60 ? 'text-amber-400' : 'text-emerald-400'}`}>
+                        {cpu0Temp}°C
+                      </span>
+                      <span className="text-[9px] text-zinc-500">({(cpu0Temp * 1.8 + 32).toFixed(0)}°F)</span>
+                    </div>
+                    <div className="w-full bg-zinc-900 h-1.5 rounded-full mt-1.5 overflow-hidden border border-zinc-800">
+                      <div 
+                        className={`h-full rounded-full transition-all duration-300 ${
+                          cpu0Temp >= 80 ? 'bg-gradient-to-r from-amber-500 to-red-600' : 'bg-gradient-to-r from-emerald-500 to-amber-400'
+                        }`}
+                        style={{ width: `${Math.min(100, (cpu0Temp / 100) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Hotspot 2: VRM POWER */}
+                  <div className="bg-black/70 border border-orange-500/60 rounded-lg p-2.5 backdrop-blur-sm relative overflow-hidden">
+                    <div className="flex items-center justify-between text-[8px] text-zinc-400 mb-1">
+                      <span className="font-bold uppercase text-orange-300 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-orange-500 animate-pulse" />
+                        VRM POWER
+                      </span>
+                      <span className="text-zinc-500">ZONE 2</span>
+                    </div>
+                    <div className="flex items-baseline gap-1">
+                      <span className={`text-lg font-black font-mono ${vrmTemp >= 80 ? 'text-red-400' : 'text-orange-400'}`}>
+                        {vrmTemp}°C
+                      </span>
+                      <span className="text-[9px] text-zinc-500">({(vrmTemp * 1.8 + 32).toFixed(0)}°F)</span>
+                    </div>
+                    <div className="w-full bg-zinc-900 h-1.5 rounded-full mt-1.5 overflow-hidden border border-zinc-800">
+                      <div 
+                        className="h-full rounded-full transition-all duration-300 bg-gradient-to-r from-yellow-500 to-orange-600"
+                        style={{ width: `${Math.min(100, (vrmTemp / 100) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Hotspot 3: RAM BANKS */}
+                  <div className="bg-black/70 border border-yellow-500/60 rounded-lg p-2.5 backdrop-blur-sm relative overflow-hidden">
+                    <div className="flex items-center justify-between text-[8px] text-zinc-400 mb-1">
+                      <span className="font-bold uppercase text-yellow-300 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-yellow-400" />
+                        RAM MODULES
+                      </span>
+                      <span className="text-zinc-500">ZONE 3</span>
+                    </div>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-lg font-black font-mono text-yellow-400">
+                        {ramTemp}°C
+                      </span>
+                      <span className="text-[9px] text-zinc-500">({(ramTemp * 1.8 + 32).toFixed(0)}°F)</span>
+                    </div>
+                    <div className="w-full bg-zinc-900 h-1.5 rounded-full mt-1.5 overflow-hidden border border-zinc-800">
+                      <div 
+                        className="h-full rounded-full transition-all duration-300 bg-gradient-to-r from-emerald-400 to-yellow-400"
+                        style={{ width: `${Math.min(100, (ramTemp / 100) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+
+                  {/* Hotspot 4: COOL INTAKE */}
+                  <div className="bg-black/70 border border-cyan-500/60 rounded-lg p-2.5 backdrop-blur-sm relative overflow-hidden">
+                    <div className="flex items-center justify-between text-[8px] text-zinc-400 mb-1">
+                      <span className="font-bold uppercase text-cyan-300 flex items-center gap-1">
+                        <span className="w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                        FAN INTAKE
+                      </span>
+                      <span className="text-zinc-500">ZONE 4</span>
+                    </div>
+                    <div className="flex items-baseline gap-1">
+                      <span className="text-lg font-black font-mono text-cyan-400">
+                        {intakeTemp}°C
+                      </span>
+                      <span className="text-[9px] text-zinc-500">({(intakeTemp * 1.8 + 32).toFixed(0)}°F)</span>
+                    </div>
+                    <div className="w-full bg-zinc-900 h-1.5 rounded-full mt-1.5 overflow-hidden border border-zinc-800">
+                      <div 
+                        className="h-full rounded-full transition-all duration-300 bg-gradient-to-r from-blue-500 to-cyan-400"
+                        style={{ width: `${Math.min(100, (intakeTemp / 100) * 100)}%` }}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* FLIR Spectrum Heat Legend Bar */}
+                <div className="relative z-10 pt-2 border-t border-red-500/30 flex flex-wrap items-center justify-between gap-2 text-[8px] text-zinc-400">
+                  <span className="font-bold text-zinc-300">FLIR PALETTE SCALE:</span>
+                  <div className="flex-1 min-w-[120px] h-2.5 rounded border border-zinc-700 overflow-hidden bg-gradient-to-r from-purple-900 via-blue-600 via-emerald-500 via-yellow-400 via-orange-500 to-red-600 shadow-inner" />
+                  <div className="flex items-center gap-2 font-mono font-bold">
+                    <span className="text-blue-400">20°C COLD</span>
+                    <span className="text-amber-400">60°C WARM</span>
+                    <span className="text-red-400">95°C HOT</span>
+                  </div>
+                </div>
+              </motion.div>
+            )}
+          </AnimatePresence>
 
           {/* Interactive Patch Bay */}
           <div className="mb-4 bg-zinc-950 border-t border-l border-zinc-900 border-r border-b border-zinc-700 rounded p-2 flex gap-2">

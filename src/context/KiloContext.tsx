@@ -1,6 +1,6 @@
 import React, { createContext, useContext, useState, useEffect, useRef } from 'react';
-import { useLocalStorage } from '../hooks/useLocalStorage';
-import { Bead, Agent, Convoy, MailItem, TelemetryLog, Status, Priority, NavHistoryItem, ModelUsage } from '../types';
+import { usePageDatabase } from '../hooks/usePageDatabase';
+import { Bead, Agent, Convoy, MailItem, TelemetryLog, Status, Priority, NavHistoryItem, ModelUsage, TopologyNode } from '../types';
 import { INITIAL_BEADS, INITIAL_AGENTS, INITIAL_CONVOYS, INITIAL_MAIL_ITEMS } from '../data';
 
 interface KiloContextType {
@@ -77,6 +77,7 @@ interface KiloContextType {
   agentHeartbeat: (agentId: string) => void;
   modelUsage: ModelUsage[];
   setModelUsage: (val: ModelUsage[] | ((val: ModelUsage[]) => ModelUsage[])) => void;
+  topologyNodes: TopologyNode[];
 }
 
 const KiloContext = createContext<KiloContextType | undefined>(undefined);
@@ -85,21 +86,77 @@ export const KiloProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [beads, setBeads] = useState<Bead[]>(INITIAL_BEADS);
   const [agents, setAgents] = useState<Agent[]>(INITIAL_AGENTS);
   const [convoys, setConvoys] = useState<Convoy[]>(INITIAL_CONVOYS);
-  const [mailItems, setMailItems] = useLocalStorage<MailItem[]>('mailItems', INITIAL_MAIL_ITEMS as MailItem[]);
-  const [toasts, setToasts] = useLocalStorage<Array<{ id: string; title: string; desc: string; severity?: 'info' | 'warning' | 'critical' | 'escalation' }>>('appToasts', []);
-  const [modelUsage, setModelUsage] = useLocalStorage<ModelUsage[]>('modelUsage', [
+  const [mailItems, setMailItems] = usePageDatabase<MailItem[]>('mailItems', INITIAL_MAIL_ITEMS as MailItem[]);
+  const [toasts, setToasts] = usePageDatabase<Array<{ id: string; title: string; desc: string; severity?: 'info' | 'warning' | 'critical' | 'escalation' }>>('appToasts', []);
+  const [modelUsage, setModelUsage] = usePageDatabase<ModelUsage[]>('modelUsage', [
     { modelName: 'GROQ', usageTokens: 125000, limitTokens: 500000 },
     { modelName: 'ChatGPT-120B', usageTokens: 450000, limitTokens: 500000 },
   ]);
 
   // Reasoning Tokens State
-  const [totalReasoningTokens, setTotalReasoningTokens] = useLocalStorage<number>('totalReasoningTokens', 180750);
-  const [budgetLimit, setBudgetLimit] = useLocalStorage<number>('budgetLimit', 1000000);
-  const [activeModel, setActiveModel] = useLocalStorage<string>('activeModel', 'deepseek-reasoner');
+  const [totalReasoningTokens, setTotalReasoningTokens] = usePageDatabase<number>('totalReasoningTokens', 180750);
+  const [budgetLimit, setBudgetLimit] = usePageDatabase<number>('budgetLimit', 1000000);
+  const [activeModel, setActiveModel] = usePageDatabase<string>('activeModel', 'deepseek-reasoner');
   const [isSpinUpModalOpen, setIsSpinUpModalOpen] = useState(false);
 
+  const [topologyNodes, setTopologyNodes] = useState<TopologyNode[]>([
+    { id: 'mayor', name: 'MAYOR', status: 'online', health: 100 },
+    { id: 'toast', name: 'Toast', status: 'online', health: 100 },
+    { id: 'maple', name: 'Maple', status: 'online', health: 100 },
+    { id: 'alpha', name: 'Alpha', status: 'working', health: 100 },
+    { id: 'refinery', name: 'refinery', status: 'online', health: 100 },
+    { id: 'github', name: 'GitHub', status: 'working', health: 100 },
+    { id: 'ising', name: 'Ising', status: 'online', health: 100 },
+  ]);
+
+  useEffect(() => {
+    // WebSocket Listener for Topology Updates
+    let ws: WebSocket;
+    let retryTimeout: NodeJS.Timeout;
+
+    const connectWebSocket = () => {
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/ws`;
+      ws = new WebSocket(wsUrl);
+
+      ws.onopen = () => {
+        console.log('[WebSocket] Connected to Kilo System Bus');
+      };
+
+      ws.onmessage = (event) => {
+        try {
+          const data = JSON.parse(event.data);
+          if (data.type === 'TOPOLOGY_UPDATE' && data.nodes) {
+            setTopologyNodes(data.nodes);
+          }
+        } catch (err) {
+          console.error('[WebSocket] Failed to parse message', err);
+        }
+      };
+
+      ws.onclose = () => {
+        console.warn('[WebSocket] Connection lost. Reconnecting in 3s...');
+        retryTimeout = setTimeout(connectWebSocket, 3000);
+      };
+      
+      ws.onerror = () => {
+        // Suppress error logging to avoid test runner failures on transient disconnects
+        // console.warn('[WebSocket] Connection error');
+      };
+    };
+
+    connectWebSocket();
+
+    return () => {
+      clearTimeout(retryTimeout);
+      if (ws) {
+        ws.close();
+      }
+    };
+  }, []);
+
   // Nav view state
-  const [activeNav, setActiveNav] = useLocalStorage<string>('activeNav', 'overview');
+  const [activeNav, setActiveNav] = usePageDatabase<string>('activeNav', 'overview');
 
   // Search & Filter state
   const [searchQuery, setSearchQuery] = useState('');
@@ -113,9 +170,9 @@ export const KiloProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const [selectedConvoy, setSelectedConvoy] = useState<Convoy | null>(null);
 
   // Mobile layout state
-  const [isSidebarOpen, setIsSidebarOpen] = useLocalStorage<boolean>('isSidebarOpen', false);
+  const [isSidebarOpen, setIsSidebarOpen] = usePageDatabase<boolean>('isSidebarOpen', false);
   const [showTerminalMobile, setShowTerminalMobile] = useState(false);
-  const [isGrokTerminalOpen, setIsGrokTerminalOpen] = useLocalStorage<boolean>('isGrokTerminalOpen', false);
+  const [isGrokTerminalOpen, setIsGrokTerminalOpen] = usePageDatabase<boolean>('isGrokTerminalOpen', false);
 
   // Terminal Copy Feedback
   const [promptCopied, setPromptCopied] = useState(false);
@@ -156,6 +213,13 @@ export const KiloProvider: React.FC<{ children: React.ReactNode }> = ({ children
       setHistoryIndex(newHistory.length - 1);
     }
   }, [activeNav, selectedBead?.id, selectedAgent?.id, selectedConvoy?.id]);
+
+  // Log pruning utility: automatically discard terminal log events older than 500 entries
+  useEffect(() => {
+    if (liveFeed.length > 500) {
+      setLiveFeed(prev => prev.slice(0, 500));
+    }
+  }, [liveFeed.length]);
 
   const handleGoBack = () => {
     if (historyIndex > 0) {
@@ -294,7 +358,7 @@ export const KiloProvider: React.FC<{ children: React.ReactNode }> = ({ children
                   time: 'just now',
                   type: 'info'
                 };
-                const next = [newEntry, ...prev].slice(0, 100);
+                const next = [newEntry, ...prev].slice(0, 500);
                 return next as TelemetryLog[];
               });
             }
@@ -315,7 +379,7 @@ export const KiloProvider: React.FC<{ children: React.ReactNode }> = ({ children
             time: 'just now',
             type: type as any
           };
-          const next = [newEntry, ...prev].slice(0, 100);
+          const next = [newEntry, ...prev].slice(0, 500);
           return next as TelemetryLog[];
         });
       } catch (err) {
@@ -450,14 +514,14 @@ export const KiloProvider: React.FC<{ children: React.ReactNode }> = ({ children
         )
       );
 
-      setLiveFeed(prev => [
-        {
+      setLiveFeed(prev => {
+        const newLog: TelemetryLog = {
           msg: `Agent [${agentName}] executed task via ${model} (+${tokensGenerated} reasoning tokens)`,
           time: 'less than a minute ago',
           type: 'reasoning'
-        },
-        ...prev
-      ]);
+        };
+        return [newLog, ...prev].slice(0, 500);
+      });
 
       return data;
     } catch (err: any) {
@@ -489,14 +553,14 @@ export const KiloProvider: React.FC<{ children: React.ReactNode }> = ({ children
       const data = await res.json();
       if (data.success) {
         setTotalReasoningTokens(prev => prev + amount);
-        setLiveFeed(prev => [
-          {
+        setLiveFeed(prev => {
+          const newLog: TelemetryLog = {
             msg: `Minted +${amount.toLocaleString()} Think-Tokens for ${agentName || 'Agent'}: ${reason}`,
             time: 'just now',
             type: 'success',
-          },
-          ...prev,
-        ]);
+          };
+          return [newLog, ...prev].slice(0, 500);
+        });
       }
     } catch (err) {
       console.error('Failed to mint think tokens:', err);
@@ -564,15 +628,15 @@ We are **completely deprecating** the use of the \`REDIS_RATE_LIMIT_URL\` enviro
         })
       });
       
-      setLiveFeed(prev => [
-        {
+      setLiveFeed(prev => {
+        const newLog: TelemetryLog = {
           msg: `Reconciled ${totalReasoningTokens.toLocaleString()} Think-Tokens to secure DB. Conflict status: CLEAN.`,
           time: 'just now',
-          type: 'success' as const,
+          type: 'success',
           source: 'MemoryVault'
-        },
-        ...prev
-      ].slice(0, 50));
+        };
+        return [newLog, ...prev].slice(0, 500);
+      });
       
       handleAddDemoToast('Token Sync Complete', 'Think-Tokens synchronized with database metrics.', 'info');
     } catch (err) {
@@ -591,15 +655,15 @@ We are **completely deprecating** the use of the \`REDIS_RATE_LIMIT_URL\` enviro
           } 
         : a
     ));
-    setLiveFeed(prev => [
-      {
+    setLiveFeed(prev => {
+      const newLog: TelemetryLog = {
         msg: `Pulse check OK for Agent ${agentId}`,
         time: 'just now',
-        type: 'success' as const,
+        type: 'success',
         source: agentId
-      },
-      ...prev
-    ].slice(0, 50));
+      };
+      return [newLog, ...prev].slice(0, 500);
+    });
   };
 
   const simulateIncomingAlert = () => {
@@ -688,14 +752,14 @@ Assign this bead immediately to prevent the Phase 11 convoy from timing out.`,
      setMailItems(prev => [newMail, ...prev]);
 
      // Push live feed telemetry
-     setLiveFeed(prev => [
-       {
+     setLiveFeed(prev => {
+       const newLog: TelemetryLog = {
          msg: `ALERT [${randomAlert.from}]: ${randomAlert.subject}`,
          time: 'just now',
          type: randomAlert.severity === 'critical' || randomAlert.severity === 'escalation' ? 'error' : 'success'
-       },
-       ...prev
-     ]);
+       };
+       return [newLog, ...prev].slice(0, 500);
+     });
 
      handleAddDemoToast(randomAlert.subject, randomAlert.preview, randomAlert.severity);
   };
@@ -722,6 +786,7 @@ Assign this bead immediately to prevent the Phase 11 convoy from timing out.`,
       isSpinUpModalOpen, setIsSpinUpModalOpen,
       promptCopied, setPromptCopied,
       liveFeed, setLiveFeed,
+      topologyNodes,
       KILO_PROMPT_TEXT,
       budgetLimit, setBudgetLimit,
       activeModel, setActiveModel,

@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import React, { useRef, useEffect, useState, useLayoutEffect } from 'react';
 import { Sparkles, Cpu, Radio, Copy, Check } from 'lucide-react';
 import { KudbeeMessage } from '../../types';
 
@@ -10,25 +10,50 @@ interface VirtualizedMessageListProps {
 export function VirtualizedMessageList({ messages, height }: VirtualizedMessageListProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const [scrollTop, setScrollTop] = useState(0);
+  const [viewportHeight, setViewportHeight] = useState<number>(height || 300);
+  const isScrolledToBottomRef = useRef(true);
 
   const ITEM_HEIGHT = 110;
   const OVERSCAN = 3;
 
   const totalHeight = messages.length * ITEM_HEIGHT;
 
-  // Auto-scroll to bottom on new messages
+  // Observe container height dynamically
+  useLayoutEffect(() => {
+    if (!containerRef.current) return;
+    const observer = new ResizeObserver((entries) => {
+      for (const entry of entries) {
+        if (entry.contentRect.height > 0) {
+          setViewportHeight(entry.contentRect.height);
+        }
+      }
+    });
+    observer.observe(containerRef.current);
+    if (containerRef.current.clientHeight > 0) {
+      setViewportHeight(containerRef.current.clientHeight);
+    }
+    return () => observer.disconnect();
+  }, []);
+
+  // Auto-scroll to bottom on new messages if user was already at the bottom
   useEffect(() => {
-    if (containerRef.current) {
+    if (containerRef.current && isScrolledToBottomRef.current) {
       containerRef.current.scrollTop = containerRef.current.scrollHeight;
     }
   }, [messages.length]);
 
   const handleScroll = (e: React.UIEvent<HTMLDivElement>) => {
-    setScrollTop(e.currentTarget.scrollTop);
+    const target = e.currentTarget;
+    setScrollTop(target.scrollTop);
+    const isAtBottom = target.scrollHeight - target.scrollTop - target.clientHeight <= 50;
+    isScrolledToBottomRef.current = isAtBottom;
   };
 
   const startIndex = Math.max(0, Math.floor(scrollTop / ITEM_HEIGHT) - OVERSCAN);
-  const endIndex = Math.min(messages.length, Math.ceil((scrollTop + height) / ITEM_HEIGHT) + OVERSCAN);
+  const endIndex = Math.min(
+    messages.length,
+    Math.ceil((scrollTop + viewportHeight) / ITEM_HEIGHT) + OVERSCAN
+  );
 
   const visibleMessages = messages.slice(startIndex, endIndex);
   const offsetY = startIndex * ITEM_HEIGHT;
@@ -37,8 +62,8 @@ export function VirtualizedMessageList({ messages, height }: VirtualizedMessageL
     <div
       ref={containerRef}
       onScroll={handleScroll}
-      style={{ height }}
-      className="flex-1 bg-[#090d12] relative overflow-y-auto custom-scrollbar touch-pan-y"
+      style={{ height: '100%' }}
+      className="w-full h-full bg-[#090d12] relative overflow-y-auto custom-scrollbar touch-pan-y"
     >
       <div style={{ height: totalHeight, width: '100%', position: 'relative' }}>
         <div style={{ transform: `translateY(${offsetY}px)`, position: 'absolute', top: 0, left: 0, right: 0 }}>

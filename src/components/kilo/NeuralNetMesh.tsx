@@ -136,14 +136,15 @@ export const NeuralNetMesh: React.FC<NeuralNetMeshProps> = ({
       ctx.setLineDash([]);
 
       // Draw particles propagating signal pulses along synapses
+      const newParticles: Particle[] = [];
       particlesRef.current = particlesRef.current.filter(p => {
         p.progress += p.speed;
         if (p.progress >= 1) {
           const nextHopLinks = links.filter(l => l.from === p.toNode.id && !l.severed);
           nextHopLinks.forEach(link => {
             const nextTarget = nodes.find(n => n.id === link.to);
-            if (nextTarget) {
-              particlesRef.current.push({
+            if (nextTarget && particlesRef.current.length + newParticles.length < 50) {
+              newParticles.push({
                 id: `p-next-${Date.now()}-${Math.random()}`,
                 fromNode: p.toNode,
                 toNode: nextTarget,
@@ -171,6 +172,8 @@ export const NeuralNetMesh: React.FC<NeuralNetMeshProps> = ({
 
         return true;
       });
+
+      particlesRef.current.push(...newParticles);
 
       // Draw Nodes
       nodes.forEach(node => {

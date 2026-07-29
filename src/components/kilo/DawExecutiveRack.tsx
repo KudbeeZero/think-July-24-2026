@@ -182,7 +182,9 @@ export const DawExecutiveRack: React.FC<DawExecutiveRackProps> = ({
     totalReasoningTokens, 
     handleMintThinkTokens, 
     activeModel, 
-    setActiveModel 
+    setActiveModel,
+    beads,
+    handleUpdateBeadStatus
   } = useKilo();
 
   // DAW Global states
@@ -266,7 +268,21 @@ export const DawExecutiveRack: React.FC<DawExecutiveRackProps> = ({
     }
   ]);
 
-  // Command interpret for routing dispatch
+  // 10 Active Work Orders Executive Board State (Live Data)
+  const workOrders = beads.slice(0, 10);
+
+  const handleExecuteWorkOrder = async (woId: string, title: string) => {
+    try {
+      setQuickPayload(`Executing Work Order [${woId}]: ${title} via Flash Light Model (gemini-3.6-flash)`);
+      if (handleMintThinkTokens) {
+        await handleMintThinkTokens(2000, `Flash Model execution of ${woId}`, undefined, 'KudbeeRouter');
+      }
+      await onRunTestTask('Toast', `Execute work order ${woId}: ${title}`, 'gemini-3.6-flash');
+      handleUpdateBeadStatus(woId, 'closed');
+    } catch (err) {
+      console.warn(err);
+    }
+  };
   const [quickPayload, setQuickPayload] = useState('Verify MemoryVault semantic recall drift across dynamic nodes');
   const [isRouting, setIsRouting] = useState(false);
   const [routeLogs, setRouteLogs] = useState<string[]>([]);
@@ -465,6 +481,47 @@ export const DawExecutiveRack: React.FC<DawExecutiveRackProps> = ({
   return (
     <div className="space-y-6 max-w-[1600px] mx-auto pb-24 font-mono select-none px-2 sm:px-4">
       
+      {/* FLASH LIGHT MODEL RACK BANNER (GEMINI 3.6 FLASH) */}
+      <div className="bg-gradient-to-r from-amber-500/15 via-yellow-500/10 to-transparent border-2 border-amber-500/40 rounded-2xl p-4 sm:p-5 shadow-2xl flex flex-col md:flex-row items-center justify-between gap-4 backdrop-blur-md relative overflow-hidden">
+        <div className="absolute top-0 right-0 px-3 py-1 bg-amber-500 text-zinc-950 font-black text-[9px] uppercase tracking-widest rounded-bl-xl shadow-md">
+          ⚡ FLASH LIGHT MODEL ACTIVE
+        </div>
+
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/50 flex items-center justify-center text-amber-400 shadow-inner shrink-0 relative animate-pulse">
+            <Zap className="w-6 h-6 text-amber-400 fill-current" />
+          </div>
+          <div>
+            <div className="flex items-center gap-2">
+              <h2 className="text-sm sm:text-base font-black text-amber-300 tracking-wider uppercase">
+                Gemini 3.6 Flash (Light Speed Engine)
+              </h2>
+              <span className="px-2 py-0.5 rounded bg-amber-400/20 text-amber-300 text-[9px] font-black border border-amber-400/40">
+                12ms Latency
+              </span>
+            </div>
+            <p className="text-[10px] text-zinc-300 font-mono mt-0.5">
+              Optimized low-latency inference engine powering real-time telemetry streaming and 10 active work orders.
+            </p>
+          </div>
+        </div>
+
+        <div className="flex items-center gap-3 w-full md:w-auto justify-end">
+          <div className="bg-black/60 border border-amber-500/30 px-3 py-1.5 rounded-xl text-center">
+            <span className="text-[8px] text-zinc-400 block uppercase font-bold">Inference Speed</span>
+            <span className="text-xs font-black text-amber-400">450 TKN/sec</span>
+          </div>
+          <button
+            onClick={() => {
+              setActiveModel('gemini-3.6-flash');
+            }}
+            className="px-4 py-2 bg-amber-500 hover:bg-amber-400 text-zinc-950 font-black text-xs rounded-xl shadow-lg transition-all active:scale-95 cursor-pointer"
+          >
+            Lock Flash Engine
+          </button>
+        </div>
+      </div>
+
       {/* 1. MASTER DAW CONSOLE STATUS & DEPLOYMENT MONITOR DECK */}
       <div className="bg-[#121620] border-2 border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-2xl flex flex-col lg:flex-row items-center justify-between gap-5 backdrop-blur-md relative overflow-hidden">
         <div className="absolute top-0 right-0 p-1 bg-yellow-500/10 text-yellow-500 text-[8px] font-black uppercase tracking-widest border-l border-b border-zinc-800">
@@ -796,7 +853,84 @@ export const DawExecutiveRack: React.FC<DawExecutiveRackProps> = ({
         </div>
       </div>
 
-      {/* 3. MULTI-MODE MONITORS: LIVE AGENTS VS SIMULATED TELEMETRY */}
+      {/* 3. 10 ACTIVE WORK ORDERS EXECUTIVE BOARD (FLASH LIGHT MODEL POWERED) */}
+      <div className="bg-[#121620] border-2 border-zinc-800 rounded-2xl p-4 sm:p-5 shadow-2xl">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between pb-3 mb-4 border-b border-zinc-800 gap-2">
+          <div className="flex items-center gap-2">
+            <Cpu className="w-5 h-5 text-amber-400" />
+            <div>
+              <h3 className="text-xs sm:text-sm font-black text-zinc-100 uppercase tracking-wider">
+                Active 10 Work Orders Executive Board
+              </h3>
+              <p className="text-[10px] text-zinc-400">
+                Powered by Gemini 3.6 Flash (Light Speed Model). Click any work order to execute instantly.
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <span className="px-2 py-1 rounded bg-amber-500/10 border border-amber-500/30 text-amber-400 text-[9px] font-black">
+              {workOrders.filter(w => w.status !== 'closed').length} PENDING / {workOrders.length} TOTAL
+            </span>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-3">
+          {workOrders.map((wo) => {
+            const isClosed = wo.status === 'closed';
+            const isWorking = wo.status === 'in_progress';
+            return (
+              <div 
+                key={wo.id}
+                className={`p-3 rounded-xl border flex flex-col justify-between transition-all ${
+                  isClosed 
+                    ? 'bg-zinc-950/40 border-zinc-900 opacity-60' 
+                    : isWorking 
+                    ? 'bg-amber-500/5 border-amber-500/40 shadow-md' 
+                    : 'bg-zinc-950/80 border-zinc-800 hover:border-zinc-700'
+                }`}
+              >
+                <div>
+                  <div className="flex items-center justify-between mb-1.5">
+                    <span className="text-[10px] font-black text-amber-400 font-mono">
+                      {wo.id}
+                    </span>
+                    <span className={`text-[8px] font-black px-1.5 py-0.5 rounded uppercase ${
+                      wo.priority === 'high' ? 'bg-red-500/20 text-red-400 border border-red-500/30' :
+                      wo.priority === 'medium' ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/30' :
+                      'bg-zinc-800 text-zinc-400'
+                    }`}>
+                      {wo.priority}
+                    </span>
+                  </div>
+                  <h4 className="text-[11px] font-bold text-zinc-200 line-clamp-2 mb-2">
+                    {wo.title}
+                  </h4>
+                </div>
+
+                <div className="pt-2 border-t border-zinc-900 flex items-center justify-between mt-2">
+                  <span className="text-[9px] text-zinc-500 font-bold">
+                    {wo.assignee || 'Unassigned'}
+                  </span>
+                  
+                  {isClosed ? (
+                    <span className="text-[9px] text-emerald-400 font-black">✓ DONE</span>
+                  ) : (
+                    <button
+                      onClick={() => handleExecuteWorkOrder(wo.id, wo.title)}
+                      className="px-2 py-1 rounded bg-amber-500 hover:bg-amber-400 text-zinc-950 text-[9px] font-black transition-all shadow active:scale-95 cursor-pointer flex items-center gap-1"
+                    >
+                      <Zap className="w-2.5 h-2.5 fill-current" />
+                      <span>Flash Run</span>
+                    </button>
+                  )}
+                </div>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      {/* 4. MULTI-MODE MONITORS: LIVE AGENTS VS SIMULATED TELEMETRY */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
         
         {/* LEFT: MASTER PAYLOAD DISPATCH (SLOT 4) */}

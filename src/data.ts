@@ -27,7 +27,32 @@ export const INITIAL_BEADS: Bead[] = [
 ];
 
 export const INITIAL_AGENTS: Agent[] = [
+
   { 
+    id: 'a3', 
+    name: 'Ising', 
+    role: 'QPU Calibrator', 
+    status: 'idle', 
+    hooked: '19ab84f2...', 
+    lastActive: 'standing by', 
+    lastSleepTime: '1 min ago',
+    currentAction: 'Agentic calibration workflow initialized.', 
+    icon: 'cpu',
+    model: 'NVIDIA Ising Calibration 1.5 (NVFP4)',
+    reasoningTokensSpent: 42100,
+    promptTokensSpent: 94000,
+    completionTokensSpent: 12000,
+    totalTasksCompleted: 9,
+    temperature: 0.1,
+    skills: ['Vision Language Diagnostics', 'Agentic Tuning', 'QPU Calibration'],
+    plugins: ['NVFP4 Quantization Engine', 'DGX Spark Allocator'],
+    tags: ['VLM', 'Diagnostics', 'QPU'],
+    redisDbIndex: 3,
+    inStandbyRoom: true,
+    agentsMdSynced: true,
+    latency: 8,
+    healthScore: 100
+  },  { 
     id: 'a1', 
     name: 'refinery', 
     role: 'refinery', 
@@ -180,6 +205,32 @@ Two package vulnerabilities have been successfully remediated by enforcing stric
 +    "tar": "7.5.19",
 +    "postcss": "^8.5.18"
    }`
+  },
+  {
+    id: 'm4',
+    from: 'Ising',
+    role: 'QPU Calibrator',
+    subject: 'Diagnostic Report: Agentic Calibration of Quantum Processing Unit',
+    preview: 'Ising Calibration 1.5 (NVFP4-quantized) completed agentic tuning on unfamiliar diagnostic results without prior training.',
+    time: '2 hours ago',
+    unread: false,
+    severity: 'info',
+    content: `Mayor,
+
+My VLM core (NVIDIA Ising Calibration 1.5) has successfully analyzed unfamiliar diagnostic outputs from the central Quantum Processing Unit (QPU). 
+
+Operating as an agentic calibration workflow deployed locally on a single GPU using the NVFP4-quantized release, I determined the required tuning adjustments dynamically without prior training examples. The QPU is now operating at optimal thermal constraints and error rates have been minimized.
+
+I am comparable in performance to leading closed models like Fable 5 and GPT 5.6 Sol, but fully open-source and integrated natively into your system topology.
+
+Awaiting next calibration target.`,
+    diff: `+++ qpu_calibration.log (NVFP4 Output)
+@@ -10,3 +10,3 @@
+- ERR_RATE: 0.045
+- THERMAL: CRITICAL
++ ERR_RATE: 0.001
++ THERMAL: NOMINAL
++ CALIBRATION: ISING_1.5_AGENTIC`
   }
 ];
 
