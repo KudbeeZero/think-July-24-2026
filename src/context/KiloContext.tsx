@@ -494,8 +494,15 @@ export const KiloProvider: React.FC<{ children: React.ReactNode }> = ({ children
         })
       });
 
+      if (!res.ok) {
+        const text = await res.text().catch(() => '');
+        let errJson: any = {};
+        try { errJson = JSON.parse(text); } catch (_) {}
+        throw new Error(errJson.error || errJson.message || `HTTP ${res.status}`);
+      }
+
       const data = await res.json();
-      const tokensGenerated = data.usage?.completion_tokens || Math.floor(Math.random() * 800) + 350;
+      const tokensGenerated = Number(data.usage?.completion_tokens) || Math.floor(Math.random() * 800) + 350;
 
       setTotalReasoningTokens(prev => prev + tokensGenerated);
 
@@ -516,7 +523,7 @@ export const KiloProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       setLiveFeed(prev => {
         const newLog: TelemetryLog = {
-          msg: `Agent [${agentName}] executed task via ${model} (+${tokensGenerated} reasoning tokens)`,
+          msg: `Agent [${agentName}] executed task via ${model} (+${tokensGenerated.toLocaleString()} reasoning tokens)`,
           time: 'less than a minute ago',
           type: 'reasoning'
         };
@@ -525,7 +532,7 @@ export const KiloProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
       return data;
     } catch (err: any) {
-      console.error('Failed to run agent test task:', err);
+      console.error('Failed to run agent test task:', err?.message || err);
       throw err;
     }
   };
@@ -545,25 +552,30 @@ export const KiloProvider: React.FC<{ children: React.ReactNode }> = ({ children
     agentName?: string
   ) => {
     try {
+      const numAmount = typeof amount === 'number' && !isNaN(amount) ? amount : Number(amount) || 0;
       const res = await fetch('/api/tokens/mint', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount, reason, agentId, agentName }),
+        body: JSON.stringify({ amount: numAmount, reason, agentId, agentName }),
       });
+      if (!res.ok) {
+        console.warn('Mint tokens request returned HTTP status', res.status);
+        return;
+      }
       const data = await res.json();
       if (data.success) {
-        setTotalReasoningTokens(prev => prev + amount);
+        setTotalReasoningTokens(prev => prev + numAmount);
         setLiveFeed(prev => {
           const newLog: TelemetryLog = {
-            msg: `Minted +${amount.toLocaleString()} Think-Tokens for ${agentName || 'Agent'}: ${reason}`,
+            msg: `Minted +${numAmount.toLocaleString()} Think-Tokens for ${agentName || 'Agent'}: ${reason}`,
             time: 'just now',
             type: 'success',
           };
           return [newLog, ...prev].slice(0, 500);
         });
       }
-    } catch (err) {
-      console.error('Failed to mint think tokens:', err);
+    } catch (err: any) {
+      console.error('Failed to mint think tokens:', err?.message || err);
     }
   };
 

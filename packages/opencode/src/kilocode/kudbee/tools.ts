@@ -1,7 +1,8 @@
 import { getRelevantThinkTokens } from '../../../../../services/memory/vectorStore.ts';
 
-export async function kudbee_recall_memories(query: string) {
+export async function kudbee_recall_memories(input: string | { query: string }) {
   try {
+    const query = typeof input === 'string' ? input : input?.query || '';
     const memories = await getRelevantThinkTokens(query);
     return memories;
   } catch (error) {

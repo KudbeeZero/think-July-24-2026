@@ -1169,19 +1169,28 @@ async function startServer() {
   // Token Minting & Reconciling Endpoints
   app.post("/api/tokens/mint", async (req, res) => {
     const { amount, reason, agentId, agentName } = req.body;
+    const numAmount = Number(amount) || 0;
+    if (numAmount <= 0) {
+      return res.status(400).json({ success: false, error: 'Invalid mint amount' });
+    }
     try {
-      await mintThinkTokens(amount, reason, agentId, agentName);
+      const mintEvent = mintThinkTokens(numAmount, reason || 'System Execution Reward', agentId, agentName);
       
-      latestThinkTokens.count += amount;
+      latestThinkTokens.count += numAmount;
       latestThinkTokens.estimatedCost = latestThinkTokens.count * 0.000002;
       latestThinkTokens.timestamp = new Date().toISOString();
       
       engine.emit('log', {
         source: 'TokenVault',
-        event: `Minted ${amount} tokens for ${agentName || 'Agent'}. Total: ${latestThinkTokens.count}.`
+        event: `Minted ${numAmount} tokens for ${agentName || 'Agent'}. Total: ${latestThinkTokens.count}.`
       });
 
-      res.json({ success: true, balance: latestThinkTokens.count });
+      res.json({
+        success: true,
+        balance: latestThinkTokens.count,
+        mintEvent,
+        reconciledState: loadReconciledState()
+      });
     } catch (e: any) {
       res.status(500).json({ success: false, error: e.message });
     }
@@ -1528,28 +1537,6 @@ async function startServer() {
     res.json({
       success: true,
       state
-    });
-  });
-
-  // Think-Token Minting Endpoint with Timestamping & Event Logging
-  app.post("/api/tokens/mint", (req, res) => {
-    const { amount, reason, agentId, agentName } = req.body;
-    
-    if (!amount || typeof amount !== 'number' || amount <= 0) {
-      return res.status(400).json({ error: 'Invalid mint amount' });
-    }
-
-    const mintEvent = mintThinkTokens(
-      amount,
-      reason || 'System Agent Execution Reward',
-      agentId,
-      agentName
-    );
-
-    res.json({
-      success: true,
-      mintEvent,
-      reconciledState: loadReconciledState()
     });
   });
 
