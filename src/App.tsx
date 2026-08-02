@@ -58,6 +58,7 @@ const OverviewView = React.lazy(() => import('./components/OverviewView').then(m
 const BeadsView = React.lazy(() => import('./components/BeadsView').then(m => ({ default: m.BeadsView })));
 const McpView = React.lazy(() => import('./components/McpView').then(m => ({ default: m.McpView })));
 const SystemTrackerView = React.lazy(() => import('./components/SystemTrackerView').then(m => ({ default: m.SystemTrackerView })));
+const DiagnosticCommandCenter = React.lazy(() => import('./components/DiagnosticCommandCenter').then(m => ({ default: m.DiagnosticCommandCenter })));
 const KiloTerminalView = React.lazy(() => import('./components/KiloTerminalView').then(m => ({ default: m.KiloTerminalView })));
 const ThinkTokenVault = React.lazy(() => import('./components/ThinkTokenVault').then(m => ({ default: m.ThinkTokenVault })));
 const SolanaTokenomicsView = React.lazy(() => import('./components/SolanaTokenomicsView').then(m => ({ default: m.SolanaTokenomicsView })));
@@ -341,6 +342,20 @@ export default function App() {
             }`}
           >
             <CheckCircle2 className="w-4 h-4 text-[#e5ff55]" /> System Tracker (10 items)
+          </button>
+
+          <button
+            onClick={() => {
+              setActiveNav('diagnostics');
+              setIsSidebarOpen(false);
+            }}
+            className={`flex items-center gap-3 px-3 py-2 text-sm rounded-md transition-colors text-left ${
+              activeNav === 'diagnostics'
+                ? 'text-zinc-100 bg-zinc-800/80 font-medium'
+                : 'text-zinc-400 hover:text-zinc-200 hover:bg-zinc-800/40'
+            }`}
+          >
+            <Activity className="w-4 h-4 text-emerald-400" /> Diagnostics Center
           </button>
 
           <button
@@ -798,6 +813,12 @@ export default function App() {
               </React.Suspense>
             </RackMountWrapper>
           </div>
+        ) : activeNav === 'diagnostics' ? (
+          <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
+            <React.Suspense fallback={<div className="p-4 text-zinc-400">Loading...</div>}>
+              <DiagnosticCommandCenter />
+            </React.Suspense>
+          </div>
         ) : activeNav === 'observability' ? (
           <div className="flex-1 overflow-y-auto overflow-x-hidden relative pb-[calc(6rem+env(safe-area-inset-bottom))] lg:pb-6" style={{ WebkitOverflowScrolling: 'touch' }}>
             <RackMountWrapper title="Observability">
@@ -1016,6 +1037,17 @@ export default function App() {
             <span className="absolute -top-0.5 -right-0.5 w-1.5 h-1.5 bg-[#e5ff55] rounded-full" />
           </div>
           <span className="text-[8px] xs:text-[9px] font-medium tracking-wide">Tracker</span>
+        </button>
+
+        <button 
+          onClick={() => { setActiveNav('diagnostics'); setIsSidebarOpen(false); }} 
+          className={`flex flex-col items-center justify-center flex-1 min-w-[50px] h-full gap-1 transition-all relative ${activeNav === 'diagnostics' ? 'text-emerald-400' : 'text-zinc-500 hover:text-zinc-400'}`}
+        >
+          {activeNav === 'diagnostics' && <span className="absolute top-0 inset-x-2 h-0.5 bg-emerald-400 rounded-full animate-pulse" />}
+          <div className="relative">
+            <Activity className="w-4 h-4 xs:w-5 xs:h-5" />
+          </div>
+          <span className="text-[8px] xs:text-[9px] font-medium tracking-wide">Diagnostics</span>
         </button>
       </div>
 

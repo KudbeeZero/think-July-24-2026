@@ -1,0 +1,87 @@
+{
+  "lastUpdated": "2026-08-02T02:02:44.844Z",
+  "thinkTokenVault": {
+    "totalMinted": 1604083,
+    "availableBalance": 1433583,
+    "stakedBalance": 170500,
+    "mintEventsCount": 15
+  },
+  "beadsCount": 16,
+  "activeAgentsCount": 3,
+  "activeConvoysCount": 1,
+  "beadsSummary": [
+    {
+      "id": "b1",
+      "title": "Remove shouldFail hook in worker.ts",
+      "status": "open"
+    },
+    {
+      "id": "b2",
+      "title": "Implement Network Switch tab",
+      "status": "open"
+    },
+    {
+      "id": "b3",
+      "title": "Add drag-and-drop & resize handles",
+      "status": "open"
+    },
+    {
+      "id": "b13",
+      "title": "Add focus trapping & a11y",
+      "status": "open"
+    },
+    {
+      "id": "b14",
+      "title": "Fix PCA reducer file not found",
+      "status": "open"
+    },
+    {
+      "id": "b15",
+      "title": "Atomic Redis EVAL for governance",
+      "status": "open"
+    },
+    {
+      "id": "b16",
+      "title": "Write 7 pending documentation items",
+      "status": "open"
+    },
+    {
+      "id": "b4",
+      "title": "Review co...",
+      "status": "closed",
+      "assignee": "refinery"
+    },
+    {
+      "id": "b5",
+      "title": "Investigate persistent black screen...",
+      "status": "closed",
+      "assignee": "Toast"
+    },
+    {
+      "id": "b6",
+      "title": "Provision de...",
+      "status": "in_review",
+      "assignee": "Maple"
+    }
+  ],
+  "agentStatesSummary": [
+    {
+      "id": "a3",
+      "name": "Ising",
+      "status": "idle",
+      "hooked": "19ab84f2..."
+    },
+    {
+      "id": "a1",
+      "name": "refinery",
+      "status": "idle",
+      "hooked": "3935330d..."
+    },
+    {
+      "id": "a2",
+      "name": "Toast",
+      "status": "working",
+      "hooked": "27ce33d3..."
+    }
+  ]
+}
